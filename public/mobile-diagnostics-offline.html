@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>连接诊断</title>
+<style>
+:root{color-scheme:light dark;font:16px system-ui,sans-serif}body{max-width:42rem;padding:1.25rem;margin:auto}h1{font-size:1.4rem}button{font:inherit;padding:.55rem .8rem;border:1px solid GrayText;border-radius:6px}pre{max-height:55vh;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;border-top:1px solid GrayText;padding-top:1rem;font-size:.8rem}
+</style>
+<body data-diagnostics-offline>
+<main>
+<h1>连接诊断</h1>
+<p id="diagnosticsStatus" role="status">暂未连到 Codex，以下是此手机保存的记录。</p>
+<button type="button" id="diagnosticsRetry">重试连接</button>
+<button type="button" id="diagnosticsExport">导出 JSON</button>
+<button type="button" id="diagnosticsClear">清空本机</button>
+<pre id="diagnosticsOutput"></pre>
+</main>
+<script src="/mobile-diagnostics.js?offline"></script>
+</body>
+</html>

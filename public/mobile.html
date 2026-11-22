@@ -133,9 +133,22 @@ html[data-keyboard-open=true] .composer{padding-bottom:6px}.composer textarea{di
 .thread-menu button{display:block;width:100%;text-align:left;border:0;background:transparent;padding:10px 12px;font-size:13px}.thread-menu button:hover,.thread-menu button:focus-visible{background:var(--theme-hover,#314056)}
 .workspace .thread-row{background:transparent;margin:0}.workspace .thread-content strong{font-size:13px;font-weight:400}
 #threadRename{width:min(94vw,420px);border-color:var(--theme-edge,#46536a)}#threadRename .toolbar{margin:16px 0 0;justify-content:flex-end}
-.async-question{white-space:normal}.async-question fieldset{min-width:0;border:1px solid var(--theme-edge,#42536b);border-radius:8px;margin:10px 0;padding:10px}.async-question legend{font-size:14px;line-height:1.5}.async-question .question-option{display:flex;gap:8px;align-items:flex-start;font-size:14px;color:var(--theme-text,#eef2f8);margin:9px 0}.async-question input[type=radio]{width:auto;flex:none;margin-top:4px}.async-question textarea{font-size:16px;min-height:64px;resize:vertical}.question-feedback{font-size:12px;color:var(--theme-muted,#a7b9cf);white-space:pre-wrap}.question-answer{font-size:14px;color:var(--theme-good,#91dfc6);white-space:pre-wrap}</style>
-<header><button id="back" hidden>‹</button><h1 id="appTitle">Codex 手机远控</h1><button id="approvalCount" type="button">待审批 0</button><span id="state">连接中</span></header><main><section id="connectionNotice" role="status" hidden style="border:1px solid var(--theme-warn-edge,#75613b);background:var(--theme-warn-bg,#282217);border-radius:10px;padding:12px;margin:12px 0"><strong id="connectionTitle"></strong><p id="connectionMessage" style="font-size:13px;line-height:1.6;margin:8px 0"></p><button id="checkConnection" type="button">重新检查连接</button></section><p id="approvalConnection" style="color:var(--theme-muted,#a5b5c9);font-size:12px">正在连接审批服务…</p><div id="error" hidden></div><dialog id="approvalDialog"><div class="toolbar"><strong id="approvalTitle" style="flex:1">需要你的确认</strong><button id="approvalLater" type="button" aria-label="稍后处理">×</button></div><div id="approvals"></div></dialog>
+.async-question{white-space:normal}.async-question fieldset{min-width:0;border:1px solid var(--theme-edge,#42536b);border-radius:8px;margin:10px 0;padding:10px}.async-question legend{font-size:14px;line-height:1.5}.async-question .question-option{display:flex;gap:8px;align-items:flex-start;font-size:14px;color:var(--theme-text,#eef2f8);margin:9px 0}.async-question input[type=radio]{width:auto;flex:none;margin-top:4px}.async-question textarea{font-size:16px;min-height:64px;resize:vertical}.question-feedback{font-size:12px;color:var(--theme-muted,#a7b9cf);white-space:pre-wrap}.question-answer{font-size:14px;color:var(--theme-good,#91dfc6);white-space:pre-wrap}
+#diagnosticsDialog{width:min(94vw,520px);max-width:100%;border-radius:8px}
+#diagnosticsDialog>.toolbar{flex-wrap:wrap;align-items:center}
+#diagnosticsDialog h2{font-size:16px;flex:1;margin:0}
+#diagnosticsOutput{max-height:45dvh;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px}
+#diagnosticsOpen{margin-top:10px}
+</style>
+<script src="/mobile-diagnostics.js"></script>
+<header><button id="back" hidden>‹</button><h1 id="appTitle">Codex 手机远控</h1><button id="approvalCount" type="button">待审批 0</button><span id="state">连接中</span></header><main><section id="connectionNotice" role="status" hidden style="border:1px solid var(--theme-warn-edge,#75613b);background:var(--theme-warn-bg,#282217);border-radius:10px;padding:12px;margin:12px 0"><strong id="connectionTitle"></strong><p id="connectionMessage" style="font-size:13px;line-height:1.6;margin:8px 0"></p><button id="checkConnection" type="button">重新检查连接</button> <button id="diagnosticsConnection" type="button">连接诊断</button></section><p id="approvalConnection" style="color:var(--theme-muted,#a5b5c9);font-size:12px">正在连接审批服务…</p><div id="error" hidden></div><dialog id="approvalDialog"><div class="toolbar"><strong id="approvalTitle" style="flex:1">需要你的确认</strong><button id="approvalLater" type="button" aria-label="稍后处理">×</button></div><div id="approvals"></div></dialog>
+<dialog id="diagnosticsDialog" aria-labelledby="diagnosticsTitle">
+ <div class="toolbar"><h2 id="diagnosticsTitle">连接诊断</h2><button id="diagnosticsClose" type="button" aria-label="关闭">×</button></div>
+ <div class="toolbar"><button id="diagnosticsRefresh" type="button">拉取电脑状态</button><button id="diagnosticsExport" type="button">导出 JSON</button><button id="diagnosticsClear" type="button">清空本机</button></div>
+ <p id="diagnosticsStatus" role="status"></p><pre id="diagnosticsOutput"></pre>
+</dialog>
 <dialog id="settingsDialog"><div class="toolbar"><strong id="settingsTitle">会话设置</strong><button type="button" id="settingsClose" aria-label="关闭">×</button></div><p id="settingsState" role="status"></p><div id="modelFields"><label for="modelSelect">模型</label><select id="modelSelect"></select><label for="effortSelect">思考深度</label><select id="effortSelect"></select></div><div id="permissionFields"><label for="permissionSelect">权限模式</label><select id="permissionSelect"><option value="default">默认权限</option><option value="read-only">只读</option><option value="full-access">完全访问</option></select><p id="permissionDescription"></p></div><button id="settingsSave" type="button" class="primary">应用到当前会话</button></dialog><dialog id="threadRename"><form method="dialog" id="renameForm"><strong>重命名会话</strong><label for="renameInput">会话名称</label><input id="renameInput" maxlength="200" required><p id="renameError" role="alert"></p><div class="toolbar"><button type="button" id="renameCancel">取消</button><button class="primary" id="renameSave">保存</button></div></form></dialog><section id="home"><div class="toolbar"><button class="primary" id="new">新建聊天</button><button id="refresh">刷新</button></div><div class="section-label">工作区</div><div id="workspaces"></div><div class="section-label">近期会话</div><div id="threads"></div><button id="more" hidden>加载更多</button><details class="new-chat-path"><summary>新会话默认目录</summary><label for="cwd">新聊天的项目目录</label><input id="cwd"></details>
+<button id="diagnosticsOpen" type="button">连接诊断</button>
 <footer id="homeFooter" aria-label="主页工具栏"><div class="home-footer-inner">
 <div id="themeBar">
 <button id="themeToggle" type="button" aria-label="切换主题：Codex 深色" aria-controls="themePopover" aria-expanded="false" style="--swatch-bg:#10141b;--swatch-accent:#82e5c0"><span class="theme-swatch" aria-hidden="true"></span></button>
@@ -209,6 +222,7 @@ function refreshOperationControls(){
  if(typeof updateTaskControls==='function')updateTaskControls();
 }
 async function readJsonResponse(response){
+ if(!response.ok)window.codexDiagnostics?.record('request',{code:'HTTP_ERROR',status:response.status});
  if(response.status===401)throw Error('连接身份未通过，请确认手机 Tailscale 已连接到你的账号，再刷新本页。无需回电脑扫码。');
  const text=await response.text(),status='HTTP '+response.status;
  if(!text.trim())throw Error('连接请求收到空响应（'+status+'），请稍后检查连接。草稿会保留，请勿重复发送。');
@@ -247,6 +261,7 @@ function remoteChatReady(){return remoteConnectionHealth?.ready===true}
 function requireChatReady(){if(!remoteChatReady())throw Error(remoteConnectionHealth?.message||'正在检查电脑连接，请稍后重试；草稿会保留。')}
 function applyConnectionHealth(health){
  remoteConnectionHealth=health;
+ window.codexDiagnostics?.record('health',{code:health.code});
  $('state').textContent=health.ready?'可聊天':health.code==='DESKTOP_RESTART_REQUIRED'?'需要电脑端恢复':health.code==='NETWORK_UNAVAILABLE'?'网络未连接':'聊天暂不可用';
  $('connectionNotice').hidden=health.ready;
  $('connectionTitle').textContent=health.code==='DESKTOP_RESTART_REQUIRED'?'需要在电脑端恢复连接':'聊天连接暂不可用';
@@ -519,9 +534,9 @@ function connect(restart=false){
  eventStream?.close();
  const stream=new EventSource('/mobile-api/events');eventStream=stream;
  // EventSource handles reconnects; only the health endpoint decides readiness.
- stream.onopen=()=>{if(eventStream!==stream)return;refreshConnectionHealth();syncApprovals().catch(error);if(selected)readCurrent().catch(error);list().catch(error)};
+ stream.onopen=()=>{if(eventStream!==stream)return;window.codexDiagnostics?.record('socket',{code:'RECONNECTED'});refreshConnectionHealth();syncApprovals().catch(error);if(selected)readCurrent().catch(error);list().catch(error)};
  stream.onmessage=e=>{if(eventStream!==stream)return;try{event(JSON.parse(e.data))}catch(err){error(err)}};
- stream.onerror=()=>{if(eventStream===stream)refreshConnectionHealth()};
+ stream.onerror=()=>{if(eventStream===stream){window.codexDiagnostics?.record('socket',{code:'DISCONNECTED'});refreshConnectionHealth()}};
 }
 function resumeConnection(){if(document.hidden||!privateAccess)return;lastConnectionResume=performance.now();refreshConnectionHealth(true);connect(true);checkPendingOperations();if(selected)readCurrent().catch(error)}
 function resumeOnForeground(){

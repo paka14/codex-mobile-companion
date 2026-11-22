@@ -32,6 +32,10 @@ test('serves the mobile UI on the authorized origin without link credentials', (
   assert.equal(controls.status, 200);
   assert.doesNotMatch(controls.body.toString(), /Bearer /);
   assert.equal(request('/mobile', { method: 'HEAD' }).body, undefined);
+  const worker = request('/mobile-diagnostics-sw.js');
+  assert.equal(worker.status, 200);
+  assert.equal(worker.headers['Service-Worker-Allowed'], '/mobile');
+  assert.match(request('/mobile-diagnostics-offline.html').body.toString(), /data-diagnostics-offline/);
 });
 
 test('rejects unexpected login, origin, source address and methods', () => {
@@ -39,5 +43,6 @@ test('rejects unexpected login, origin, source address and methods', () => {
   assert.equal(request('/mobile-controls.js', { headers: { origin: 'https://other.example.test' } }).status, 403);
   assert.equal(request('/mobile', { ip: '192.0.2.2' }).status, 403);
   assert.equal(request('/mobile', { method: 'POST' }).status, 405);
+  assert.equal(request('/mobile-diagnostics-sw.js', { headers: { 'tailscale-user-login': 'other@example.test' } }).status, 403);
   assert.equal(request('/mobile-api/events').handled, false);
 });

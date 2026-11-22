@@ -15,7 +15,7 @@ const ownerLogin = 'owner@example.test';
 const threadId = randomUUID();
 const thread = { id: threadId, name: 'Fixture', cwd: 'C:/example' };
 
-async function fixture(t) {
+async function fixture(t, healthExtras = {}) {
   const dataDirectory = await mkdtemp(join(tmpdir(), 'companion-gateway-'));
   const requests = [{ id: 'desktop:01', method: 'item/fileChange/requestApproval' }];
   const sends = [], responses = [], calls = [];
@@ -23,7 +23,7 @@ async function fixture(t) {
   let approvalBarrier = Promise.resolve();
   const desktop = {
     subscribe(fn) { subscriber = fn; return () => { stopCount++; }; },
-    health: async () => ({ ready, code: ready ? 'READY' : 'DESKTOP_UNAVAILABLE' }),
+    health: async () => ({ ready, code: ready ? 'READY' : 'DESKTOP_UNAVAILABLE', ...healthExtras }),
     async rpc(method, params) {
       calls.push({ method, params });
       if (method === 'thread/list') return { data: [thread] };
@@ -86,6 +86,23 @@ async function fixture(t) {
     },
   };
 }
+
+test('reports sanitized diagnostics for the authenticated owner only', async t => {
+  const { request, ready, calls } = await fixture(t, { detail: 'PRIVATE_FIXTURE' });
+  const path = '/mobile-api/diagnostics';
+  assert.equal((await request(path, { authenticated: false })).status, 403);
+  assert.equal((await request(path, { data: {} })).status, 405);
+  await request('/mobile-api/health');
+  ready();
+  const reply = await request(path);
+  assert.equal(reply.status, 200);
+  assert.equal(reply.body.schemaVersion, 1);
+  assert.equal(reply.body.current.code, 'READY');
+  assert.equal(reply.body.current.gateway, true);
+  assert.deepEqual(reply.body.recent.map(row => row.code), ['DESKTOP_UNAVAILABLE', 'READY']);
+  assert(!JSON.stringify(reply.body).includes('PRIVATE_FIXTURE'));
+  assert.equal(calls.length, 0);
+});
 
 test('requires owner identity and same-origin writes, even with a legacy link token', async t => {
   const { request, calls } = await fixture(t);

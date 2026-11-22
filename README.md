@@ -10,6 +10,12 @@ This is a **Windows developer preview**, not an installer. The repository includ
 
 The first runnable release is intended to cover session browsing, history, sending messages, and approvals. Notifications are not required for the first-run setup. Windows and Codex version support will be listed after a clean-machine test.
 
+## Connection diagnostics
+
+Open **连接诊断** on the mobile home screen to inspect, download or clear local errors. **拉取电脑状态** adds a read-only snapshot and recent readiness changes from the running gateway. Logs contain timestamps, error categories and HTTP status codes, never chat content or credentials. The companion does not upload reports.
+
+After one successful online visit in the same browser profile, the offline screen can capture browser-observed navigation failures and export them without contacting the gateway. It cannot inspect Tailscale or Android system logs, or diagnose failures before the offline screen is installed. A browser navigation error alone does not distinguish DNS from routing failures.
+
 ## Start on Windows
 
 Install Node.js 24 or later, the official Codex desktop app for your Windows account, and Tailscale on the PC and phone. The launcher currently recognizes the `OpenAI.Codex` Windows app package, not a browser shortcut or another desktop distribution. Chrome is not required; use a current browser on the phone.

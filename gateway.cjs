@@ -18,6 +18,7 @@ const desktopMethods = new Set([
 const unrestrictedMethods = new Set(['thread/list', 'model/list']);
 const fileLimit = 20 * 1024 * 1024;
 const headers = { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer' };
+const diagnosticCodes = new Set(['READY', 'DESKTOP_UNAVAILABLE', 'DESKTOP_RESTART_REQUIRED', 'DESKTOP_CHECK_PENDING', 'NETWORK_UNAVAILABLE']);
 
 class HttpError extends Error {
   constructor(status, message) { super(message); this.status = status; }
@@ -82,6 +83,16 @@ function createGateway({ origin, ownerLogin, dataDirectory, desktop, reportError
   const snapshots = new MobileSnapshots((method, params) => desktop.rpc(method, params));
   const listeners = new Set();
   const responding = new Set();
+  const recentHealth = [];
+  function diagnosticStatus(health) {
+    const code = diagnosticCodes.has(health.code) ? health.code : 'DESKTOP_UNAVAILABLE';
+    const row = { at: new Date().toISOString(), code, ready: code === 'READY' && health.ready === true };
+    if (recentHealth.at(-1)?.code !== code) {
+      recentHealth.push(row);
+      if (recentHealth.length > 24) recentHealth.shift();
+    }
+    return row;
+  }
   const publish = event => {
     const message = 'data: ' + JSON.stringify(event) + '\n\n';
     for (const res of listeners) if (!res.write(message)) res.destroy();
@@ -105,8 +116,15 @@ function createGateway({ origin, ownerLogin, dataDirectory, desktop, reportError
       case '/mobile-api/ready': {
         if (!method('GET')) return;
         const health = await desktop.health();
+        diagnosticStatus(health);
         const ready = health.ready === true;
         return json(res, path.pathname.endsWith('/ready') && !ready ? 503 : 200, { ...health, ready, schemaVersion: 1 });
+      }
+      case '/mobile-api/diagnostics': {
+        if (!method('GET')) return;
+        const health = await desktop.health().catch(() => ({ code: 'NETWORK_UNAVAILABLE' }));
+        const current = { ...diagnosticStatus(health), gateway: true };
+        return json(res, 200, { schemaVersion: 1, current, recent: recentHealth.slice() });
       }
       case '/mobile-api/live':
         if (method('GET')) return json(res, 200, { live: true });

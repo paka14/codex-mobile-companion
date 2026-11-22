@@ -7,13 +7,16 @@ const { renderMobile, trustedTailscale } = require('./mobile-access.cjs');
 
 function createMobilePage(access) {
   const html = readFileSync(join(__dirname, 'public', 'mobile.html'), 'utf8');
-  const controls = readFileSync(join(__dirname, 'public', 'mobile-controls.js'));
-  const version = createHash('sha256').update(html).update(controls).digest('hex').slice(0, 12);
+  const assets = new Map(['mobile-controls.js', 'mobile-diagnostics.js', 'mobile-diagnostics-sw.js', 'mobile-diagnostics-offline.html']
+    .map(name => ['/' + name, readFileSync(join(__dirname, 'public', name))]));
+  const hash = createHash('sha256').update(html);
+  for (const body of assets.values()) hash.update(body);
+  const version = hash.digest('hex').slice(0, 12);
   const page = renderMobile(html, version, true);
 
   return (req, res) => {
     const path = req.url.split('?')[0];
-    if (path !== '/mobile' && path !== '/mobile-controls.js') return false;
+    if (path !== '/mobile' && !assets.has(path)) return false;
 
     const headers = {
       'Cache-Control': 'no-store',
@@ -28,8 +31,10 @@ function createMobilePage(access) {
         .end(req.method === 'HEAD' ? undefined : 'Connect to Tailscale and open the private companion URL.');
     } else {
       const isPage = path === '/mobile';
-      res.writeHead(200, { ...headers, 'Content-Type': isPage ? 'text/html; charset=utf-8' : 'text/javascript; charset=utf-8' })
-        .end(req.method === 'HEAD' ? undefined : isPage ? page : controls);
+      res.writeHead(200, { ...headers,
+        'Content-Type': isPage || path.endsWith('.html') ? 'text/html; charset=utf-8' : 'text/javascript; charset=utf-8',
+        ...(path === '/mobile-diagnostics-sw.js' ? { 'Service-Worker-Allowed': '/mobile' } : {}),
+      }).end(req.method === 'HEAD' ? undefined : isPage ? page : assets.get(path));
     }
     return true;
   };

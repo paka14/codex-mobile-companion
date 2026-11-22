@@ -9,6 +9,7 @@ const { renderMobile } = require('../mobile-access.cjs');
 const assets = join(__dirname, '..', 'public');
 const html = readFileSync(join(assets, 'mobile.html'), 'utf8');
 const controls = readFileSync(join(assets, 'mobile-controls.js'));
+const diagnostics = readFileSync(join(assets, 'mobile-diagnostics.js'));
 const thread = {
   id: '12345678-1234-1234-1234-000000000001',
   name: 'Example conversation',
@@ -33,6 +34,9 @@ async function run() {
         switch (url.pathname) {
           case '/mobile': return route.fulfill({ contentType: 'text/html; charset=utf-8', body: renderMobile(html, 'fixture', true) });
           case '/mobile-controls.js': return route.fulfill({ contentType: 'text/javascript; charset=utf-8', body: controls });
+          case '/mobile-diagnostics.js': return route.fulfill({ contentType: 'text/javascript; charset=utf-8', body: diagnostics });
+          case '/mobile-api/diagnostics': return route.fulfill({ json: { schemaVersion: 1,
+            current: { at: new Date().toISOString(), code: 'READY', ready: true, gateway: true }, recent: [] } });
           case '/mobile-api/events': return route.fulfill({ contentType: 'text/event-stream', body: ': connected\n\n' });
           case '/mobile-api/health': return route.fulfill({ json: { schemaVersion: 1, ready: true, code: 'READY' } });
           case '/mobile-api/workspaces': return route.fulfill({ json: { projects: [], assignments: {} } });
@@ -55,6 +59,10 @@ async function run() {
       await page.goto('https://companion.example.test/mobile');
       assert.equal(await page.locator('#cwd').inputValue(), '');
       assert.equal(await page.locator('#pinnedSection').count(), 0);
+      await page.locator('#diagnosticsOpen').click();
+      await page.locator('#diagnosticsRefresh').click();
+      await page.waitForFunction(() => document.querySelector('#diagnosticsOutput')?.textContent.includes('"gateway": true'));
+      await page.locator('#diagnosticsClose').click();
       if (screenshots) await page.screenshot({ path: join(screenshots, 'companion-home-' + width + '.png') });
       await page.locator('.thread-more').click();
       assert.equal(await page.getByRole('menuitem', { name: '置顶', exact: true }).count(), 0);
