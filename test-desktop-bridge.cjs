@@ -77,7 +77,7 @@ test('desktop bridge verifies initialization, relays approvals, and does not rep
     close() { this.readyState = 3; this.onclose(); }
   }
 
-  const bridge = new DesktopBridge(request => requests.push(request), id => resolved.push(id), {
+  const bridge = new DesktopBridge(request => requests.push(request), id => { if (id !== null) resolved.push(id); }, {
     Socket, retryMs: 5, onActivity: value => activity.push(value.method),
     fetcher: async (url, init) => {
       assert.equal(url, 'http://127.0.0.1:9229/json/list');

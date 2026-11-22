@@ -185,6 +185,8 @@ function createGateway({ origin, ownerLogin, dataDirectory, desktop, reportError
     handle(req, res).catch(e => {
       if (res.headersSent || res.destroyed) return res.destroy();
       if (e instanceof HttpError) return json(res, e.status, { error: e.message });
+      const status = { DESKTOP_UNAVAILABLE: 503, APPROVAL_STALE: 409, INVALID_ACTION: 400 }[e.code];
+      if (status) return json(res, status, { error: e.message, code: e.code });
       reportError(e);
       return json(res, 502, { error: 'The desktop operation could not be confirmed.' });
     });

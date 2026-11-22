@@ -4,6 +4,7 @@
 /source/
 /web/
 /dist/
+/companion.config.json
 /.env*
 *.log
 *.bak*

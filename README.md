@@ -4,9 +4,31 @@ An unofficial, self-hosted Windows companion for accessing your own Codex deskto
 
 ## Development status
 
-This is a **source preview**, not an installer or a runnable remote-control service. It includes the mobile UI, loopback gateway, and local Codex renderer bridge. The gateway's desktop adapter and Windows launcher are not yet connected to this bridge. Cloning this repository will not start a gateway or connect to Codex.
+This is a **developer preview**, not an installer. The mobile UI, loopback gateway and local Codex bridge run together. The Windows desktop launcher and real-phone verification are still pending. No desktop version is advertised as supported yet. Read and pin state are not synced to the desktop sidebar in this preview.
 
 The first runnable release is intended to cover session browsing, history, sending messages, and approvals. Notifications are not required for the first-run setup. Windows and Codex version support will be listed after a clean-machine test.
+
+## Start the gateway
+
+Requires Node.js 24 or later. Save a local configuration as `companion.config.json` (ignored by Git), or keep it outside this checkout. Replace the example origin with the exact HTTPS origin reported by your own [Tailscale Serve](https://tailscale.com/docs/features/tailscale-serve) instance; do not include a trailing slash. Set the login to the exact identity of the phone user. Keep the example ports unless the gateway or local debugger already uses a different port.
+
+```json
+{
+  "origin": "https://companion.example.test",
+  "ownerLogin": "owner@example.test",
+  "port": 4317,
+  "desktopPort": 9229,
+  "dataDirectory": "data"
+}
+```
+
+```powershell
+npm.cmd start -- .\companion.config.json
+```
+
+This starts only the gateway; it does not launch or restart Codex, modify Tailscale, or send a message. Run it as the Windows user who owns the Codex session. In a fresh private test environment, use `tailscale serve status` first to make sure port 443 is not already in use. In a separate terminal, run `tailscale serve 4317` and use the reported HTTPS URL plus `/mobile` from your phone on Tailscale. Only proxy the gateway port, never the desktop debugger. Do not use Funnel. Ctrl+C stops the foreground processes. The page reports the desktop as unavailable until the local Codex renderer is connected.
+
+The data directory is relative to the configuration file unless an absolute path is provided. Keep this directory private: it contains uploaded files and operation receipts. Do not run more than one gateway against the same data directory.
 
 ## Run the module checks
 

@@ -43,7 +43,7 @@ class DesktopBridge extends DesktopTransport {
   if(reply.exceptionDetails||reply.result?.value!==true)throw Error('Codex desktop bridge unavailable');
  }
  onReady(){this.syncPending().catch(()=>{});}
- onDisconnect(){this.snapshotObserved=false;this.frameId=undefined;this.contextId=undefined;}
+ onDisconnect(){this.snapshotObserved=false;this.frameId=undefined;this.contextId=undefined;this.onResolved(null);}
  call(method,params={}){
   if(method==='Runtime.evaluate'){
    if(!this.contextId)return Promise.reject(Error('Codex desktop context unavailable'));
@@ -64,6 +64,7 @@ class DesktopBridge extends DesktopTransport {
   if(!this.ready||event.method!=='Runtime.bindingCalled'||event.params?.name!==binding||
      event.params.executionContextId!==this.contextId)return;
   const message=JSON.parse(event.params.payload);
+  if(message.hostId&&message.hostId!=='local')return;
   if(message.type==='mcp-request'&&message.request&&/requestApproval|requestUserInput|elicitation\/request/.test(message.request.method)){
    this.onRequest({...message.request,id:'desktop:'+message.request.id,__desktopId:message.request.id,__hostId:message.hostId||'local'});
   }
@@ -86,7 +87,7 @@ DesktopBridge.prototype.request=async function(method,params={}){
 DesktopBridge.prototype.syncPending=async function(){
  if(!this.ready)return;
  const reply=await this.call('Runtime.evaluate',{expression:'('+async function(resolveFunction){
-  const pending=new Map(window.__codexMobileCompanionPending||[]),seen=new Set(),queue=[];let scope=window.__mobileCompanionScope;const stores=window.__mobileCompanionApprovalStores||[];for(const store of stores)for(const conversation of store.map.values())for(const request of conversation?.requests||[])if(request?.method&&request.params)pending.set(String(request.id),{request,hostId:store.hostId});if(stores.length)return {requests:[...pending.values()],observed:true};
+  const pending=new Map(window.__codexMobileCompanionPending||[]),seen=new Set(),queue=[];let scope=window.__mobileCompanionScope;const stores=window.__mobileCompanionApprovalStores||[];for(const store of stores)if(store.hostId==='local')for(const conversation of store.map.values())for(const request of conversation?.requests||[])if(request?.method&&request.params)pending.set(String(request.id),{request,hostId:store.hostId});if(stores.length&&window.__mobileCompanionManager)return {requests:[...pending.values()],observed:true};
   for(const node of document.querySelectorAll('body,body *')){
    for(const key of Object.keys(node))if(key.startsWith('__reactFiber$')||key.startsWith('__reactContainer$'))queue.push([node[key],0]);
    if(queue.length>30)break;
@@ -94,7 +95,12 @@ DesktopBridge.prototype.syncPending=async function(){
   let observed=false;
   for(let n=0;n<queue.length&&n<60000;n++){
    const [value,depth]=queue[n];if(!value||typeof value!=='object'||seen.has(value)||depth>24||value instanceof Node)continue;seen.add(value);if(!scope&&value.node&&typeof value.get==='function'&&typeof value.watch==='function')scope=value;
-   if(value.conversations instanceof Map){observed=true;(window.__mobileCompanionApprovalStores??=[]).push({map:value.conversations,hostId:value.hostId||'local'});for(const conversation of value.conversations.values())for(const request of conversation?.requests||[])if(request?.method&&request.params)pending.set(String(request.id),{request,hostId:value.hostId||'local'})}
+   if(value.conversations instanceof Map&&(!value.hostId||value.hostId==='local')){
+    observed=true;
+    const cached=window.__mobileCompanionApprovalStores??=[];
+    if(!cached.some(store=>store.map===value.conversations))cached.push({map:value.conversations,hostId:'local'});
+    for(const conversation of value.conversations.values())for(const request of conversation?.requests||[])if(request?.method&&request.params)pending.set(String(request.id),{request,hostId:'local'});
+   }
    if(value instanceof Map){for(const v of value.values())queue.push([v,depth+1]);continue}
    for(const [key,descriptor] of Object.entries(Object.getOwnPropertyDescriptors(value))){
     if(['items','turns','transcript','children','stateNode','return','alternate','_debugOwner'].includes(key))continue;
@@ -113,7 +119,9 @@ DesktopBridge.prototype.syncPending=async function(){
  }.toString()+')('+resolveDesktopSend.toString()+')',awaitPromise:true,returnByValue:true});
  if(reply.exceptionDetails)throw Error(reply.exceptionDetails.text);
  this.snapshotObserved=reply.result?.value?.observed===true;
- for(const entry of reply.result?.value?.requests||[]){const r=entry.request;if(/requestApproval|requestUserInput|elicitation\/request/.test(r.method))this.onRequest({...r,id:'desktop:'+r.id,__desktopId:r.id,__hostId:entry.hostId||'local'})}
+ const requests=[];
+ for(const entry of reply.result?.value?.requests||[]){const r=entry.request;if(/requestApproval|requestUserInput|elicitation\/request/.test(r.method))requests.push({...r,id:'desktop:'+r.id,__desktopId:r.id,__hostId:entry.hostId||'local'})}
+ return {observed:this.snapshotObserved,requests};
 };
 
 // Use the desktop manager so its composer and subsequent turns share the update.
