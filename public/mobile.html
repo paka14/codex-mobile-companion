@@ -1,0 +1,557 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content"><meta name="referrer" content="no-referrer"><title>Codex 手机远控</title>
+<script>
+if(matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches)document.documentElement.dataset.installedApp='';
+try{document.documentElement.dataset.theme=localStorage.getItem('codex-mobile-theme')||'codex'}catch{}
+</script>
+<style>
+:root{color-scheme:dark;--theme-text:#ffffff;--theme-muted:#d1dce9;--theme-line:#526780;--theme-edge:#7389a8}
+:root[data-installed-app]{background:var(--theme-surface,#161d27);--app-top-inset:env(safe-area-inset-top,0px)}
+[data-installed-app] body{min-height:100vh}
+[data-installed-app] header{padding-top:calc(14px + var(--app-top-inset))}
+[data-theme="nord"]{
+ color-scheme:dark;
+ --theme-bg:#252e3e;--theme-surface:#303d51;--theme-panel:#34435a;--theme-field:#2d3a4e;--theme-button:#3d506a;--theme-hover:#475d78;
+ --theme-code:#202938;--theme-user:#304f5a;--theme-line:#6c829e;--theme-edge:#859bb5;--theme-text:#ffffff;--theme-muted:#d5e3f0;
+ --theme-accent:#99d8ee;--theme-accent-ink:#182128;--theme-good:#9cd9ca;--theme-note:#ebcb8b;--theme-danger:#f4a9b2;--theme-warn-bg:#403a33;--theme-warn-edge:#9b805a;--theme-error-bg:#563d47;
+}
+[data-theme="dracula"]{
+ color-scheme:dark;
+ --theme-bg:#282a36;--theme-surface:#30323f;--theme-panel:#343646;--theme-field:#303241;--theme-button:#414357;--theme-hover:#4b4e65;
+ --theme-code:#20222c;--theme-user:#3b3451;--theme-line:#6c708e;--theme-edge:#8b8fb1;--theme-text:#ffffff;--theme-muted:#d8dcf0;
+ --theme-accent:#bd93f9;--theme-accent-ink:#24172f;--theme-good:#8be9fd;--theme-note:#f1fa8c;--theme-danger:#ffa0a0;--theme-warn-bg:#41392e;--theme-warn-edge:#97754e;--theme-error-bg:#56343e;
+}
+[data-theme="solar-dark"]{
+ color-scheme:dark;
+ --theme-bg:#002b36;--theme-surface:#073642;--theme-panel:#0b3a45;--theme-field:#0a3540;--theme-button:#174651;--theme-hover:#255762;
+ --theme-code:#00242d;--theme-user:#11444a;--theme-line:#537d86;--theme-edge:#6e9aa4;--theme-text:#ffffff;--theme-muted:#d1e3e3;
+ --theme-accent:#76cfc2;--theme-accent-ink:#052d31;--theme-good:#96dfd2;--theme-note:#edc76c;--theme-danger:#ffa59d;--theme-warn-bg:#393522;--theme-warn-edge:#907b4b;--theme-error-bg:#53313b;
+}
+[data-theme="solar-light"]{
+ color-scheme:light;
+ --theme-bg:#fdf6e3;--theme-surface:#f9f2dd;--theme-panel:#eee8d5;--theme-field:#f6efdc;--theme-button:#e9e1cc;--theme-hover:#e0d7bd;
+ --theme-code:#f5edd8;--theme-user:#e4eddf;--theme-line:#a3997e;--theme-edge:#887c5e;--theme-text:#23343a;--theme-muted:#43575d;
+ --theme-accent:#235e78;--theme-accent-ink:#ffffff;--theme-good:#176d62;--theme-note:#79530b;--theme-danger:#9e302a;--theme-warn-bg:#f7e9c6;--theme-warn-edge:#a67b32;--theme-error-bg:#f5e0d9;
+}
+[data-theme="classic-white"]{
+ color-scheme:light;
+ --theme-bg:#ffffff;--theme-surface:#f6f8fb;--theme-panel:#f5f7fa;--theme-field:#ffffff;--theme-button:#edf1f6;--theme-hover:#e2e8f0;
+ --theme-code:#eef2f7;--theme-user:#e6f0fc;--theme-line:#dcdcdc;--theme-edge:#dcdcdc;--theme-text:#121820;--theme-muted:#425164;
+ --theme-accent:#476ee8;--theme-accent-ink:#365bc9;--theme-good:#11665b;--theme-note:#795007;--theme-danger:#a12c2c;--theme-warn-bg:#fff3d4;--theme-warn-edge:#927028;--theme-error-bg:#fce8e8;
+}
+[data-theme="classic-white"] button.primary,[data-theme="classic-white"] .compose-tools #send{background:#ecf2fe;color:var(--theme-accent-ink);box-shadow:inset 0 0 0 1px #d4e2fc}
+#threads>.thread-row,#pinnedThreads>.thread-row,.workspace,.bubble{border:1px solid var(--theme-line,#526780)}
+#threads .thread-row .thread strong,#pinnedThreads .thread-row .thread strong{font-weight:600}
+input::placeholder,textarea::placeholder{color:var(--theme-muted,#d1dce9);opacity:1}
+:root{--home-footer-height:56px}
+#home{padding-bottom:calc(var(--home-footer-height) + 8px + env(safe-area-inset-bottom))}
+#homeFooter{position:fixed;inset:auto 0 0;z-index:7;padding-bottom:env(safe-area-inset-bottom);background:var(--theme-surface,#161d27);border-top:1px solid var(--theme-line,#303b4b)}
+.home-footer-inner{max-width:900px;height:var(--home-footer-height);margin:auto;padding-inline:max(16px,env(safe-area-inset-left)) max(16px,env(safe-area-inset-right));display:flex;align-items:center;gap:8px}
+#themeBar{position:relative;margin-inline-start:auto}
+.thread-row>.thread{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.thread-sorting{overflow-anchor:none}
+#home .thread-row.thread-dragging{z-index:1;background:var(--theme-panel,#1c2634);outline:2px solid var(--theme-accent,#82e5c0);outline-offset:-2px;box-shadow:0 5px 14px #0004;cursor:grabbing}
+#themePopover{position:absolute;right:0;bottom:calc(100% + 6px);width:min(280px,calc(100vw - 32px));padding:8px;background:var(--theme-surface,#161d27);border:1px solid var(--theme-edge,#42536b);border-radius:8px;box-shadow:0 4px 18px #0004}
+#themeName{display:block;margin:2px 6px 4px;font-size:13px;font-weight:600;overflow-wrap:anywhere}
+.theme-picks{display:grid;grid-template-columns:repeat(6,minmax(0,1fr))}
+#themeToggle,.theme-choice{display:grid;place-items:center;margin:0;padding:0;height:44px;border:0;background:transparent;border-radius:6px;cursor:pointer}
+#themeToggle{width:44px}
+.theme-choice:hover{background:var(--theme-button,#263449)}
+.theme-swatch{width:27px;height:27px;display:grid;place-items:center;border-radius:50%;border:1px solid var(--theme-edge,#42536b);background:var(--swatch-bg);color:var(--swatch-accent)}
+.theme-swatch::after{content:'';width:10px;height:10px;border-radius:50%;background:currentColor}
+#themeToggle .theme-swatch{box-shadow:0 1px 5px #0004}
+.theme-choice[aria-pressed=true] .theme-swatch{outline:2px solid var(--theme-accent,#82e5c0);outline-offset:2px}
+#themeToggle:focus-visible .theme-swatch,.theme-choice:focus-visible .theme-swatch{outline:2px solid var(--theme-text,#eef2f8);outline-offset:3px}
+</style>
+<style>
+.answer-actions{display:flex;align-items:center;flex-wrap:wrap;gap:2px 6px;margin-top:9px;color:var(--theme-muted,#a7b9cf);font-size:12px;line-height:1.4;white-space:normal}
+.answer-actions button,.answer-actions summary{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:38px;border:0;border-radius:6px;padding:6px 9px;background:transparent;color:inherit;cursor:pointer}
+.answer-actions button:hover,.answer-actions summary:hover{background:var(--theme-button,#263449);color:var(--theme-text,#eef2f8)}.answer-actions summary::-webkit-details-marker{display:none}
+.answer-actions svg{width:16px;height:16px;flex:none}.answer-actions time{margin-left:auto;text-align:right}
+.answer-options{flex-basis:100%;border-top:1px solid var(--theme-line,#344255);padding-top:4px}
+.answer-options dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;margin:4px 9px 8px}.answer-options dd{margin:0;overflow-wrap:anywhere}
+.answer-feedback{flex-basis:100%;padding:0 9px;color:var(--theme-text,#d2dcee)}
+.answer-text>:first-child{margin-top:0}.answer-text>:last-child{margin-bottom:0}
+.answer-text p,.answer-text ul,.answer-text ol,.answer-text pre,.answer-text blockquote{margin:8px 0}
+.answer-text h3,.answer-text h4,.answer-text h5,.answer-text h6{font-size:15px;line-height:1.5;margin:14px 0 5px}
+.answer-text h3{font-size:16px}.answer-text ul,.answer-text ol{padding-inline-start:1.5em}.answer-text li+li{margin-top:4px}
+.answer-text code{font:0.9em/1.5 ui-monospace,Consolas,monospace;padding:1px 4px;border-radius:4px;background:var(--theme-code,#101720)}
+.answer-text pre{background:var(--theme-code,#101720);border:1px solid var(--theme-line,#344255);border-radius:6px;padding:9px;overflow-x:auto;white-space:pre;overflow-wrap:normal}
+.answer-text pre code{padding:0}.answer-text blockquote{border-inline-start:2px solid var(--theme-edge,#536880);padding-inline-start:10px;color:var(--theme-text,#c7d5e5)}
+.answer-key{font-weight:650}.answer-key.conclusion{color:var(--theme-good,#83ddd2)}.answer-key.followup{color:var(--theme-note,#f2cd84)}.answer-key.warning{color:var(--theme-danger,#ffaea4)}
+</style>
+<style>
+*{box-sizing:border-box}body{margin:0;background:var(--theme-bg,#10141b);color:var(--theme-text,#eef2f8);font:15px system-ui,-apple-system,sans-serif}header{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--theme-surface,#161d27);border-bottom:1px solid var(--theme-line,#303b4b)}h1{font-size:17px;margin:0;flex:1}button,input,textarea,select{font:inherit}button{background:var(--theme-button,#263449);color:var(--theme-text,#eef2f8);border:1px solid var(--theme-edge,#42536b);border-radius:10px;padding:10px 14px;cursor:pointer}button:disabled{opacity:.45}button.primary{background:var(--theme-accent,#82e5c0);color:var(--theme-accent-ink,#10251e);border:0}#state{color:var(--theme-muted,#a7b9cf);font-size:12px}main{max-width:900px;margin:auto;padding:16px}#error{background:var(--theme-error-bg,#5b2930);padding:12px;border-radius:10px;white-space:pre-wrap;margin-bottom:12px}input,textarea,select{width:100%;background:var(--theme-field,#1a2330);border:1px solid var(--theme-edge,#3b4960);border-radius:10px;color:var(--theme-text,#fff);padding:12px}label{display:block;color:var(--theme-muted,#b2c0d2);font-size:13px;margin:14px 0 8px}.toolbar{display:flex;gap:8px;margin-bottom:14px}.thread{display:block;width:100%;text-align:left;margin:9px 0;background:var(--theme-field,#1a2330);padding:14px}.thread strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.thread small{display:block;margin-top:7px;color:var(--theme-muted,#a5b5c9);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.bubble{margin:14px 0;padding:14px;border-radius:12px;background:var(--theme-panel,#1c2634);white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.65}.bubble.user{background:var(--theme-user,#1d3a3d)}.bubble.work{font:12px ui-monospace,monospace;color:var(--theme-muted,#b6c5d6);max-height:200px;overflow:auto}.role{color:var(--theme-muted,#a3b8ce);font-size:12px;margin-bottom:6px}.composer{position:sticky;bottom:0;padding:12px 0 max(12px,env(safe-area-inset-bottom));background:var(--theme-bg,#10141b)}.composer textarea{resize:vertical;min-height:84px}.actions{display:flex;gap:8px;align-items:center;margin-top:8px}.actions span{flex:1;color:var(--theme-muted,#a4b6c9);font-size:12px}#chatTitle{font-size:17px;overflow-wrap:anywhere}#approvals{position:relative}.approval{background:var(--theme-warn-bg,#3d3420);padding:14px;border:1px solid var(--theme-warn-edge,#9d8447);border-radius:10px;margin:12px 0}.approval pre{max-height:200px;overflow:auto;white-space:pre-wrap}a{color:var(--theme-good,#91dfc6)}[hidden]{display:none!important}#empty{color:var(--theme-muted,#a5b5c9);line-height:1.8;padding:20px 0}
+dialog{width:min(94vw,680px);max-height:85vh;overflow:auto;background:var(--theme-surface,#161d27);color:var(--theme-text,#eef2f8);border:1px solid var(--theme-warn-edge,#9d8447);border-radius:14px}dialog::backdrop{background:#0009}
+#approvalDialog{padding:0;border-color:var(--theme-edge,#46536a);max-height:88dvh;width:min(94vw,680px)}#approvalDialog>.toolbar{position:sticky;top:0;z-index:1;background:var(--theme-surface,#161d27);padding:14px 16px;margin:0;border-bottom:1px solid var(--theme-line,#303b4b);align-items:center}#approvals{padding:0 14px 14px}.approval{background:var(--theme-panel,#1c2634);border-color:var(--theme-edge,#3c4d63);padding:16px;margin:14px 0 0;overflow-wrap:anywhere}.approval-title{font-size:17px;display:block;line-height:1.5}.approval-source{display:block;color:var(--theme-muted,#a7b9cf);font-size:12px;margin:5px 0 16px}.approval-field{margin:14px 0}.approval-field>span{display:block;font-size:12px;color:var(--theme-muted,#a7b9cf);margin-bottom:6px}.approval-value{white-space:pre-wrap;line-height:1.65}.approval pre{margin:0;max-height:240px;white-space:pre-wrap;overflow-wrap:anywhere;background:var(--theme-code,#101720);padding:12px;border-radius:8px;font:13px/1.6 ui-monospace,monospace}.approval-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}.approval-actions>button{flex:1 1 110px;min-height:44px}.approval details{margin-top:16px;color:var(--theme-muted,#a7b9cf);font-size:12px}.approval summary{cursor:pointer;padding:8px 0}.approval details pre{margin-top:6px;font-size:11px}.approval-question{border:0;padding:0;margin:18px 0}.approval-question legend{font-weight:600;line-height:1.6;margin-bottom:10px}.approval-option{display:flex;gap:10px;align-items:flex-start;background:var(--theme-surface,#17202c);border:1px solid var(--theme-edge,#3b4960);padding:12px;border-radius:8px;margin:8px 0;color:var(--theme-text,#eef2f8);cursor:pointer}.approval-option input{width:auto;flex:none;margin-top:4px;accent-color:var(--theme-accent,#82e5c0)}.approval-option small{display:block;font-size:12px;color:var(--theme-muted,#a7b9cf);line-height:1.6;margin-top:4px}.approval-error{color:var(--theme-danger,#ffb8bf);white-space:pre-wrap;font-size:13px;margin-top:12px}.approval-hint{color:var(--theme-muted,#a7b9cf);font-size:13px;line-height:1.6}
+.bubble.work{padding:0;max-height:none;overflow:visible;font:13px system-ui;color:var(--theme-muted,#a7b9cf);background:var(--theme-surface,#161e29)}.work summary{padding:10px 12px;cursor:pointer;line-height:1.5}.work .work-body{font:12px/1.6 ui-monospace,monospace;max-height:300px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;padding:0 12px 12px}.work:not([open]) .work-body{display:none}#older{display:block;margin:12px auto}#toLatest{position:fixed;right:max(18px,calc((100vw - 900px)/2 + 18px));bottom:calc(var(--composer-height,160px) + 18px);z-index:3;width:44px;height:44px;padding:0;border-radius:50%;font-size:25px;background:var(--theme-button,#29433f);border-color:var(--theme-accent,#82e5c0);box-shadow:0 3px 16px #0007}
+#approvalDialog{width:min(94vw,580px);max-height:72vh;max-height:min(72dvh,600px);overflow:hidden;margin:auto}#approvalDialog[open]{display:flex;flex-direction:column}#approvalDialog>.toolbar{position:static;flex:none;padding:10px 14px;gap:10px}#approvalTitle{font-size:16px;line-height:1.4}#approvalLater{padding:2px 10px;font-size:24px;border:0;background:transparent;color:var(--theme-muted,#a7b9cf);min-height:36px}#approvals{overflow:auto;min-height:0;padding:0 14px 10px;overscroll-behavior:contain}.approval{border:0;background:var(--theme-surface,#161d27);margin:0;padding:8px 0 0}.approval+.approval{border-top:1px solid var(--theme-line,#303b4b);margin-top:10px}.approval-source{margin:0 0 8px;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.approval-field{margin:9px 0}.approval-field>span{font-size:11px;margin-bottom:4px}.approval-value{font-size:14px;line-height:1.5;max-height:90px;overflow:auto}.approval pre{max-height:110px;padding:9px;font-size:12px;line-height:1.5}.approval-field[data-field="工作目录"]{display:none}.approval details{margin-top:8px}.approval summary{padding:6px 0}.approval-actions{position:sticky;bottom:-1px;background:var(--theme-surface,#161d27);margin-top:8px;padding:8px 0 2px;gap:7px;z-index:1}.approval-actions>button{flex:1 1 110px;min-width:0;min-height:40px;padding:8px 7px;font-size:14px}.approval-error{margin-top:6px}.approval-question{margin:10px 0}.approval-option{padding:9px;margin:6px 0}header{gap:8px}header h1{font-size:15px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#chatTitle{display:none}#approvalCount{padding:8px;font-size:12px}#state{font-size:11px}
+
+.bubble.work{margin:6px 0;border-radius:7px;font-size:11px}.work summary{padding:6px 9px;line-height:1.35}.work .work-body{font-size:11px;line-height:1.45;max-height:220px;padding:0 9px 8px}
+#activity{display:flex;align-items:center;gap:6px;font-size:11px;line-height:1.4;color:var(--theme-muted,#aac2d2);padding:5px 8px;margin:0 0 6px;border-radius:6px;background:var(--theme-surface,#19232e)}#activity::before{content:'';width:6px;height:6px;flex:none;border-radius:50%;background:var(--theme-accent,#82e5c0);animation:activityPulse 1.3s ease-in-out infinite}#activity[data-waiting=true]::before{animation:none;background:var(--theme-note,#e6c36e)}@keyframes activityPulse{50%{opacity:.3}}@media(prefers-reduced-motion:reduce){#activity::before{animation:none}}
+
+.section-label{font-size:12px;color:var(--theme-muted,#95a5b9);margin:22px 0 8px}.workspace{background:var(--theme-surface,#171f2a);border-radius:10px;margin:8px 0;padding:0 10px}.workspace>summary{cursor:pointer;padding:12px 0;font-size:14px;font-weight:600}.workspace .thread{background:transparent;border:0;border-radius:5px;padding:9px 6px;margin:0}.workspace .thread strong{font-size:13px;font-weight:400}.workspace .thread small{display:none}.workspace-path{font-size:11px;color:var(--theme-muted,#93a7bd);overflow-wrap:anywhere;margin:4px 0 8px}.workspace-new{padding:6px 9px;font-size:12px;margin:4px 0 10px}.compose-tools{display:flex;align-items:center;gap:5px;margin-top:7px}.compose-tools button{padding:6px 9px;font-size:11px;border:0;background:var(--theme-surface,#1a2431);border-radius:7px;min-height:32px;max-width:47%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#addAttachment{font-size:22px;padding:0 9px;flex:none}.tool-spacer{flex:1}#addMenu{display:flex;gap:8px;padding:6px 0}#addMenu button{font-size:12px;padding:8px}#attachments{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}.attachment{display:flex;align-items:center;gap:5px;max-width:100%;font-size:11px;background:var(--theme-panel,#20303e);padding:4px 7px;border-radius:6px}.attachment span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.attachment button{padding:0 4px;border:0;background:none;font-size:16px}#settingsDialog{width:min(94vw,460px);padding:16px;max-height:80dvh;border-color:var(--theme-edge,#46536a)}#settingsDialog .toolbar{align-items:center;margin:0}#settingsTitle{flex:1}#settingsClose{padding:2px 9px;background:none;border:0;font-size:23px}#settingsState,#permissionDescription{font-size:12px;color:var(--theme-muted,#a7b9cf);line-height:1.6}#settingsSave{width:100%;margin-top:18px}#modelButton{max-width:46%}.composer textarea{min-height:70px}#ownershipNote{display:none}#resumeCopy{font-size:11px;padding:6px 9px}#home>.toolbar{margin-bottom:10px}
+#chat{display:flex;flex-direction:column;min-height:calc(100dvh - 140px)}#resumeCopy{align-self:flex-start}#messages{flex:1}.composer{margin-top:auto}
+.new-chat-path{font-size:12px;color:var(--theme-muted,#95a5b9);margin-top:22px}.new-chat-path summary{cursor:pointer}#threads>.thread{padding:11px 12px;margin:6px 0;border:0}#threads .thread strong{font-size:14px;font-weight:500}#threads .thread small{font-size:11px;margin-top:4px}
+
+/* Anchor the composer to the visible viewport, including browsers that overlay the keyboard. */
+#chat{padding-bottom:calc(var(--composer-height,150px) + var(--keyboard-inset,0px));min-height:calc(var(--visible-height,100dvh) - 140px)}
+.composer{position:fixed;left:max(16px,calc((100vw - 868px)/2));right:max(16px,calc((100vw - 868px)/2));bottom:var(--keyboard-inset,0px);z-index:4;margin:0;padding:8px 0 max(10px,env(safe-area-inset-bottom));border-top:1px solid var(--theme-line,#263140)}
+html[data-keyboard-open=true] .composer{padding-bottom:6px}.composer textarea{display:block;font-size:16px;max-height:150px;max-height:min(150px,30dvh)}
+.compose-tools{flex-wrap:nowrap;gap:5px;min-width:0}.compose-tools button{flex:0 0 auto;max-width:none;min-width:0;height:32px;padding:5px 8px}.compose-tools #modelButton{flex:0 1 auto;max-width:44%;min-width:38px}.tool-spacer{flex:1 1 0;min-width:0}.compose-tools #send{background:var(--theme-accent,#82e5c0);color:var(--theme-accent-ink,#10251e);min-width:44px}.compose-tools #stop{font-size:11px}.compose-tools #addAttachment{flex:none;padding:0 8px}#turnState{display:block;font-size:10px;line-height:1.3;color:var(--theme-muted,#a4b6c9);margin-top:3px}#turnState:empty{display:none}
+#toLatest{bottom:calc(var(--keyboard-inset,0px) + var(--composer-height,150px) + 12px)}
+#slashCommands{position:absolute;inset-inline:0;bottom:calc(100% + 5px);max-height:min(264px,calc(var(--visible-height,100dvh) * .55));overflow-y:auto;overscroll-behavior:contain;padding:4px;background:var(--theme-surface,#161d27);border:1px solid var(--theme-edge,#42536b);border-radius:8px;box-shadow:0 4px 16px #0003}
+#slashCommands button{display:flex;align-items:center;gap:10px;width:100%;min-height:42px;padding:7px 9px;text-align:left;background:transparent;border:0;border-radius:5px}
+#slashCommands button[data-current=true],#slashCommands button:focus-visible{background:var(--theme-button,#263449)}
+#slashCommands strong{font:600 13px ui-monospace,monospace;overflow-wrap:anywhere}
+#slashCommands span{color:var(--theme-muted,#a7b9cf);font-size:12px;overflow-wrap:anywhere}
+#goalBar{display:flex;align-items:center;gap:8px;width:100%;min-height:36px;margin:0 0 6px;padding:5px 8px;border-radius:7px;text-align:left;background:var(--theme-surface,#19232e);font-size:12px}
+#goalBar :is(.goal-bar-icon,.goal-bar-label){flex:none;color:var(--theme-muted,#a7b9cf)}
+#goalBar .goal-bar-icon{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2}
+#goalBar .goal-bar-label{padding:2px 5px;border-radius:4px;font-size:11px;font-weight:600}
+#goalBar[data-status=active] :is(.goal-bar-icon,.goal-bar-label){color:var(--theme-good,#91dfc6)}
+#goalBar[data-status=active] .goal-bar-label{background:color-mix(in srgb,currentColor 15%,transparent)}
+#goalBar .goal-bar-text{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#goalBar::after{content:'›';color:var(--theme-muted,#a7b9cf);flex:none;font-size:17px;line-height:1}
+#goalDialog{width:min(94vw,460px);max-height:min(80dvh,calc(var(--visible-height,100dvh) - 24px));border-radius:8px;overflow:auto}
+#goalDialog .toolbar{align-items:center;margin:0}#goalTitle{flex:1}#goalClose{padding:2px 9px;background:none;border:0;font-size:23px}
+#goalState{font-size:13px;color:var(--theme-muted,#a7b9cf);overflow-wrap:anywhere}#goalObjective{white-space:pre-wrap;overflow-wrap:anywhere;max-height:32dvh;overflow:auto}
+#goalInput{min-height:86px;max-height:32dvh;resize:vertical}#goalActions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;margin-top:12px}
+@media(max-width:350px){.compose-tools{gap:4px}.compose-tools button{padding-inline:6px;font-size:10px}.compose-tools #modelButton{max-width:35%}}
+
+.thread-row{position:relative;display:flex;align-items:center;gap:4px;margin:6px 0;background:var(--theme-field,#1a2330);border-radius:10px}
+#pinnedThreads>.thread-row>.thread,#threads>.thread-row>.thread,.workspace .thread-row>.thread{flex:1;min-width:0;width:auto;border:0;background:transparent;margin:0;padding:11px 12px}
+.thread-list-empty{font-size:12px;color:var(--theme-muted,#95a5b9);padding:8px 0;line-height:1.6}
+.thread-content{flex:1;min-width:0}.thread-row>.thread{display:flex;align-items:center;gap:9px}
+.thread-status{width:14px;height:14px;flex:none;display:flex;align-items:center;justify-content:center}
+.thread-status[data-status=unread]::before,.thread-status[data-status=waiting]::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--theme-good,#60d69a)}
+.thread-status[data-status=waiting]::before{background:var(--theme-note,#e9c15d)}
+.thread-automation{display:block;width:16px;height:16px;flex:none;color:var(--theme-muted,#a5b5c9)}
+.thread-automation svg{display:block;width:100%;height:100%}
+.thread-status[data-status=running]::before{content:'';width:12px;height:12px;border:2px solid var(--theme-edge,#6c8193);border-top-color:var(--theme-text,#e7f0f5);border-radius:50%;animation:threadSpin .9s linear infinite}
+@keyframes threadSpin{to{transform:rotate(360deg)}}
+.thread-more{flex:none;padding:8px 10px;margin-right:3px;background:transparent;border:0;color:var(--theme-muted,#94a4b7);font-size:20px;min-width:36px;min-height:40px}
+.thread-menu{position:absolute;right:5px;top:calc(100% - 4px);z-index:6;min-width:170px;padding:5px;background:var(--theme-button,#222d3c);border:1px solid var(--theme-edge,#42536b);border-radius:10px;box-shadow:0 6px 24px #0007}
+.thread-menu button{display:block;width:100%;text-align:left;border:0;background:transparent;padding:10px 12px;font-size:13px}.thread-menu button:hover,.thread-menu button:focus-visible{background:var(--theme-hover,#314056)}
+.workspace .thread-row{background:transparent;margin:0}.workspace .thread-content strong{font-size:13px;font-weight:400}
+#threadRename{width:min(94vw,420px);border-color:var(--theme-edge,#46536a)}#threadRename .toolbar{margin:16px 0 0;justify-content:flex-end}
+.async-question{white-space:normal}.async-question fieldset{min-width:0;border:1px solid var(--theme-edge,#42536b);border-radius:8px;margin:10px 0;padding:10px}.async-question legend{font-size:14px;line-height:1.5}.async-question .question-option{display:flex;gap:8px;align-items:flex-start;font-size:14px;color:var(--theme-text,#eef2f8);margin:9px 0}.async-question input[type=radio]{width:auto;flex:none;margin-top:4px}.async-question textarea{font-size:16px;min-height:64px;resize:vertical}.question-feedback{font-size:12px;color:var(--theme-muted,#a7b9cf);white-space:pre-wrap}.question-answer{font-size:14px;color:var(--theme-good,#91dfc6);white-space:pre-wrap}</style>
+<header><button id="back" hidden>‹</button><h1 id="appTitle">Codex 手机远控</h1><button id="approvalCount" type="button">待审批 0</button><span id="state">连接中</span></header><main><section id="connectionNotice" role="status" hidden style="border:1px solid var(--theme-warn-edge,#75613b);background:var(--theme-warn-bg,#282217);border-radius:10px;padding:12px;margin:12px 0"><strong id="connectionTitle"></strong><p id="connectionMessage" style="font-size:13px;line-height:1.6;margin:8px 0"></p><button id="checkConnection" type="button">重新检查连接</button></section><p id="approvalConnection" style="color:var(--theme-muted,#a5b5c9);font-size:12px">正在连接审批服务…</p><div id="error" hidden></div><dialog id="approvalDialog"><div class="toolbar"><strong id="approvalTitle" style="flex:1">需要你的确认</strong><button id="approvalLater" type="button" aria-label="稍后处理">×</button></div><div id="approvals"></div></dialog>
+<dialog id="settingsDialog"><div class="toolbar"><strong id="settingsTitle">会话设置</strong><button type="button" id="settingsClose" aria-label="关闭">×</button></div><p id="settingsState" role="status"></p><div id="modelFields"><label for="modelSelect">模型</label><select id="modelSelect"></select><label for="effortSelect">思考深度</label><select id="effortSelect"></select></div><div id="permissionFields"><label for="permissionSelect">权限模式</label><select id="permissionSelect"><option value="default">默认权限</option><option value="read-only">只读</option><option value="full-access">完全访问</option></select><p id="permissionDescription"></p></div><button id="settingsSave" type="button" class="primary">应用到当前会话</button></dialog><dialog id="threadRename"><form method="dialog" id="renameForm"><strong>重命名会话</strong><label for="renameInput">会话名称</label><input id="renameInput" maxlength="200" required><p id="renameError" role="alert"></p><div class="toolbar"><button type="button" id="renameCancel">取消</button><button class="primary" id="renameSave">保存</button></div></form></dialog><section id="home"><div class="toolbar"><button class="primary" id="new">新建聊天</button><button id="refresh">刷新</button></div><section id="pinnedSection" aria-labelledby="pinnedHeading"><div class="section-label" id="pinnedHeading">置顶</div><div id="pinnedThreads"></div></section><div class="section-label">工作区</div><div id="workspaces"></div><div class="section-label">近期会话</div><div id="threads"></div><button id="more" hidden>加载更多</button><details class="new-chat-path"><summary>新会话默认目录</summary><label for="cwd">新聊天的项目目录</label><input id="cwd"></details>
+<footer id="homeFooter" aria-label="主页工具栏"><div class="home-footer-inner">
+<div id="themeBar">
+<button id="themeToggle" type="button" aria-label="切换主题：Codex 深色" aria-controls="themePopover" aria-expanded="false" style="--swatch-bg:#10141b;--swatch-accent:#82e5c0"><span class="theme-swatch" aria-hidden="true"></span></button>
+<div id="themePopover" hidden>
+<strong id="themeName">Codex 深色</strong>
+<div class="theme-picks" role="group" aria-label="配色主题">
+<button class="theme-choice" type="button" value="codex" aria-label="Codex 深色" aria-pressed="true" title="Codex 深色" style="--swatch-bg:#10141b;--swatch-accent:#82e5c0"><span class="theme-swatch" aria-hidden="true"></span></button>
+<button class="theme-choice" type="button" value="nord" aria-label="Nord" aria-pressed="false" title="Nord" style="--swatch-bg:#252e3e;--swatch-accent:#99d8ee"><span class="theme-swatch" aria-hidden="true"></span></button>
+<button class="theme-choice" type="button" value="dracula" aria-label="Dracula" aria-pressed="false" title="Dracula" style="--swatch-bg:#282a36;--swatch-accent:#bd93f9"><span class="theme-swatch" aria-hidden="true"></span></button>
+<button class="theme-choice" type="button" value="solar-dark" aria-label="Solarized 深色" aria-pressed="false" title="Solarized 深色" style="--swatch-bg:#002b36;--swatch-accent:#2aa198"><span class="theme-swatch" aria-hidden="true"></span></button>
+<button class="theme-choice" type="button" value="solar-light" aria-label="Solarized 浅色" aria-pressed="false" title="Solarized 浅色" style="--swatch-bg:#fdf6e3;--swatch-accent:#268bd2"><span class="theme-swatch" aria-hidden="true"></span></button>
+<button class="theme-choice" type="button" value="classic-white" aria-label="经典白" aria-pressed="false" title="经典白" style="--swatch-bg:#ffffff;--swatch-accent:#476ee8"><span class="theme-swatch" aria-hidden="true"></span></button>
+</div></div></div>
+</div></footer>
+</section>
+<section id="chat" hidden><h2 id="chatTitle"></h2><button id="resumeCopy" type="button">复制上下文续聊</button><p id="ownershipNote" style="color:var(--theme-muted,#a5b5c9);font-size:13px">电脑端已打开的聊天会通过应用消息接口发送；“复制上下文续聊”可选。</p><button id="older" type="button" hidden>加载更早消息</button><div id="messages"></div><div id="empty" hidden>在下方发送指令，Codex 将在电脑上执行。</div><form class="composer" id="form"><div id="activity" role="status" aria-live="polite" hidden></div><div id="attachments" hidden></div><div id="addMenu" hidden><button type="button" id="addImage">添加图片</button><button type="button" id="addFile">添加文件</button></div><input id="imagePicker" type="file" accept="image/*" multiple hidden><input id="filePicker" type="file" multiple hidden><textarea id="prompt" aria-label="发送给 Codex 的指令" placeholder="输入要在电脑上执行的任务…" required></textarea><div class="compose-tools"><button id="addAttachment" type="button" aria-label="添加附件" aria-expanded="false">＋</button><button id="permissionsButton" type="button">权限</button><button id="modelButton" type="button">模型</button><span class="tool-spacer"></span><button type="button" id="stop" hidden>暂停</button><button type="submit" class="primary" id="send">发送</button></div><span id="turnState" role="status"></span></form></section><button id="toLatest" type="button" aria-label="回到最新消息" title="回到最新消息" hidden>↓</button></main>
+<script>
+'use strict';
+const $=id=>document.getElementById(id),privateAccess=document.documentElement.dataset.mobileAuth==='tailscale';
+function setThemePickerOpen(open,restoreFocus=false){
+ const trigger=$('themeToggle');
+ $('themePopover').hidden=!open;
+ trigger.setAttribute('aria-expanded',String(open));
+ if(restoreFocus)trigger.focus({preventScroll:true});
+}
+function initMobileTheme(){
+ const root=document.documentElement,bar=$('themeBar'),trigger=$('themeToggle'),popover=$('themePopover'),choices=[...bar.querySelectorAll('.theme-choice')];
+ function apply(choice){
+  for(const option of choices)option.setAttribute('aria-pressed',String(option===choice));
+  root.dataset.theme=choice.value;
+  const name=choice.getAttribute('aria-label');
+  $('themeName').textContent=name;
+  trigger.title='切换主题：'+name;
+  trigger.setAttribute('aria-label',trigger.title);
+  for(const property of ['--swatch-bg','--swatch-accent'])trigger.style.setProperty(property,choice.style.getPropertyValue(property));
+  if(root.hasAttribute('data-installed-app')){
+   const color=getComputedStyle(document.querySelector('header')).backgroundColor;
+   if(color&&color!=='transparent'&&color!=='rgba(0, 0, 0, 0)'){
+    let meta=document.querySelector('meta[name="theme-color"]');
+    if(!meta){meta=document.createElement('meta');meta.name='theme-color';document.head.append(meta)}
+    meta.content=color;
+   }
+  }
+  try{localStorage.setItem('codex-mobile-theme',choice.value)}catch{}
+ }
+ apply(choices.find(choice=>choice.value===root.dataset.theme)||choices[0]);
+ trigger.onclick=()=>setThemePickerOpen(popover.hidden);
+ for(const choice of choices)choice.onclick=()=>apply(choice);
+ document.addEventListener('click',event=>{
+  if(!popover.hidden&&!bar.contains(event.target))setThemePickerOpen(false);
+ });
+ document.addEventListener('keydown',event=>{
+  if(event.key==='Escape'&&!popover.hidden){event.preventDefault();setThemePickerOpen(false,true)}
+ });
+}
+initMobileTheme();
+let selected=null,turnId=null,cursor=null,eventStream,refreshTimer,reading=false,threadRows=[];
+let opening=false,openSequence=0;const threadCache=new Map(),historyCursors=new Map(),renderNodes=new Map(),desktopThreads=new Set();let sending=false;const pendingApprovals=new Map();
+const loadedThreads=new Set(),liveActivity=new Map();
+const threadRevisions=new Map(),pendingOperations=new Map();let operationChecking=false,createBusy=false;
+try{for(const operation of JSON.parse(sessionStorage.getItem('codex-mobile-operations')||'[]'))if(operation.id&&['send','create'].includes(operation.kind))pendingOperations.set(operation.id,operation)}catch{}
+function persistOperations(){sessionStorage.setItem('codex-mobile-operations',JSON.stringify([...pendingOperations.values()]))}
+function pendingSend(id=selected?.id){return [...pendingOperations.values()].find(o=>o.kind==='send'&&o.params.threadId===id)}
+function pendingCreate(){return [...pendingOperations.values()].find(o=>o.kind==='create')}
+function refreshOperationControls(){
+ const operation=pendingSend();sending=!!operation;
+ $('send').disabled=sending||opening||!remoteChatReady();$('send').textContent=operation?'确认中…':'发送';
+ $('new').disabled=createBusy||!!pendingCreate()||!remoteChatReady();$('new').textContent=pendingCreate()?'正在确认新建…':'新建聊天';
+ document.querySelectorAll('.workspace-new').forEach(b=>{b.disabled=createBusy||!!pendingCreate()||!remoteChatReady();b.textContent=pendingCreate()?'正在确认新建…':'＋ 新建会话'});
+ if(operation)$('turnState').textContent='正在确认电脑是否收到，草稿已保留，请勿重复发送。';
+ if(typeof updateTaskControls==='function')updateTaskControls();
+}
+async function readJsonResponse(response){
+ if(response.status===401)throw Error('连接身份未通过，请确认手机 Tailscale 已连接到你的账号，再刷新本页。无需回电脑扫码。');
+ const text=await response.text(),status='HTTP '+response.status;
+ if(!text.trim())throw Error('连接请求收到空响应（'+status+'），请稍后检查连接。草稿会保留，请勿重复发送。');
+ try{return JSON.parse(text)}catch{throw Error('连接响应不完整或格式无效（'+status+'），请稍后检查连接。草稿会保留，请勿重复发送。')}
+}
+async function operationRequest(path,body){const response=await fetch('/mobile-api/operations'+path,{method:body?'POST':'GET',headers:{...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined,cache:'no-store',signal:AbortSignal.timeout(12000)});const result=await readJsonResponse(response);if(!response.ok){const error=Error(result.error||'暂未取得操作回执（HTTP '+response.status+'）');error.definitive=!!body&&response.status===400;throw error;}return result}
+function settleOperation(operation,receipt){
+ if(!pendingOperations.has(operation.id))return receipt;
+ if(receipt.id!==operation.id||!['succeeded','failed'].includes(receipt.status))return receipt;
+ pendingOperations.delete(operation.id);persistOperations();
+ if(receipt.status==='failed'){const message=(operation.kind==='send'?'发送失败，草稿已保留：':'创建失败：')+(receipt.error||'电脑未接受操作');if(operation.params.threadId===selected?.id)$('turnState').textContent=message;error(message)}
+ else if(operation.kind==='create'){
+  const thread=receipt.result?.thread;if(thread){threadCache.set(thread.id,thread);if(typeof rememberThreadSettings==='function')rememberThreadSettings(receipt.result);clearError();showChat(thread)}
+ }else{
+  const id=operation.params.threadId;desktopThreads.add(id);
+  if(operation.draft!==undefined){const key='codex-draft:'+id;if((sessionStorage.getItem(key)||'').trim()===operation.draft)sessionStorage.removeItem(key);if(selected?.id===id&&$('prompt').value.trim()===operation.draft)$('prompt').value='';if(typeof attachmentsFor==='function'){const sent=new Set(operation.attachmentPaths||[]);draftAttachments.set(id,attachmentsFor(id).filter(file=>!sent.has(file.path)));if(selected?.id===id)renderAttachments()}}
+  liveActivity.set(id,{running:true,baseTurnId:threadCache.get(id)?.turns?.at(-1)?.id,label:'正在思考中…'});
+  if(selected?.id===id){$('turnState').textContent='已发送';updateActivity();scheduleRead();goLatest()}
+ }
+ refreshOperationControls();return receipt;
+}
+async function submitOperation(kind,params,details={}){
+ const previous=kind==='send'?pendingSend(params.threadId):pendingCreate();if(previous)return {id:previous.id,status:'pending'};
+ requireChatReady();const operation={id:crypto.randomUUID(),kind,params,...details};pendingOperations.set(operation.id,operation);
+ try{persistOperations()}catch(e){pendingOperations.delete(operation.id);throw Error('无法保存操作凭据，请检查浏览器存储后重试。')}
+ refreshOperationControls();
+ try{return settleOperation(operation,await operationRequest('',{id:operation.id,kind,params}))}catch(e){if(e.definitive){pendingOperations.delete(operation.id);persistOperations();throw e;}return {id:operation.id,status:'pending'}}finally{refreshOperationControls()}
+}
+async function checkPendingOperations(){
+ if(operationChecking||document.hidden||!privateAccess||!pendingOperations.size)return;operationChecking=true;
+ try{await Promise.all([...pendingOperations.values()].map(async operation=>{try{let receipt=await operationRequest('?id='+encodeURIComponent(operation.id));if(receipt.status==='not_found')receipt=await operationRequest('',{id:operation.id,kind:operation.kind,params:operation.params});settleOperation(operation,receipt)}catch(e){if(e.definitive)settleOperation(operation,{id:operation.id,status:'failed',error:e.message})}}))}finally{operationChecking=false;refreshOperationControls()}
+}
+function pendingReceiptError(){const e=Error('正在确认电脑是否收到，内容已保留，请勿重复发送。');e.pendingOperation=true;return e}
+let remoteConnectionHealth=null,connectionHealthPending=null,connectionHealthTimer,lastConnectionResume=-Infinity;
+function remoteChatReady(){return remoteConnectionHealth?.ready===true}
+function requireChatReady(){if(!remoteChatReady())throw Error(remoteConnectionHealth?.message||'正在检查电脑连接，请稍后重试；草稿会保留。')}
+function applyConnectionHealth(health){
+ remoteConnectionHealth=health;
+ $('state').textContent=health.ready?'可聊天':health.code==='DESKTOP_RESTART_REQUIRED'?'需要电脑端恢复':health.code==='NETWORK_UNAVAILABLE'?'网络未连接':'聊天暂不可用';
+ $('connectionNotice').hidden=health.ready;
+ $('connectionTitle').textContent=health.code==='DESKTOP_RESTART_REQUIRED'?'需要在电脑端恢复连接':'聊天连接暂不可用';
+ $('connectionMessage').textContent=health.message;
+ refreshOperationControls();
+ if(typeof updateTaskControls==='function')updateTaskControls();
+}
+function refreshConnectionHealth(restart=false){
+ if(!privateAccess)return Promise.resolve();
+ if(connectionHealthPending&&!restart)return connectionHealthPending.promise;
+ clearTimeout(connectionHealthTimer);
+ const previous=connectionHealthPending,check={controller:new AbortController()};
+ connectionHealthPending=check;previous?.controller.abort();
+ let timeout;
+ const deadline=new Promise((_,reject)=>{
+  timeout=setTimeout(()=>{
+   reject(Error('health timed out'));
+   check.controller.abort();
+  },8000);
+ });
+ check.promise=(async()=>{
+  try{
+   // Bound both fetch and body parsing even if a suspended request ignores abort.
+   const request=(async()=>{
+    const response=await fetch('/mobile-api/health',{cache:'no-store',signal:check.controller.signal});
+    if(response.status===401)return {ready:false,code:'AUTH_REQUIRED',message:'连接身份未通过，请确认手机 Tailscale 已连接到你的账号，再刷新本页。无需回电脑扫码。'};
+    if(!response.ok)throw Error('health unavailable');
+    const health=await response.json();if(health.schemaVersion!==1)throw Error('health contract unavailable');
+    return health;
+   })();
+   const health=await Promise.race([request,deadline]);
+   if(connectionHealthPending===check)applyConnectionHealth(health);
+  }catch{if(connectionHealthPending===check)applyConnectionHealth({ready:false,code:'NETWORK_UNAVAILABLE',message:'暂时无法检查电脑连接，正在自动重试。请确认手机 Tailscale 和电脑网络在线。草稿会保留。'})}
+ })().finally(()=>{
+  clearTimeout(timeout);
+  if(connectionHealthPending!==check)return;
+  connectionHealthPending=null;
+  connectionHealthTimer=setTimeout(()=>{if(!document.hidden)refreshConnectionHealth()},remoteChatReady()?10000:2500);
+ });return check.promise;
+}
+
+function error(e){const text=e.message||String(e);delete $('error').dataset.historyThread;$('error').textContent=/active writer|thread-store conflict/i.test(text)?'电脑端占用此聊天，且应用消息接口未能完成发送。草稿已保留，请稍后重试。':text;$('error').hidden=false}
+function clearError(){$('error').hidden=true;delete $('error').dataset.historyThread}
+function historyError(id,e){if(selected?.id!==id)return;if(!$('error').hidden&&!$('error').dataset.historyThread)return;error(e);$('error').dataset.historyThread=id}
+function clearHistoryError(id){if($('error').dataset.historyThread===id)clearError()}
+function button(text,fn){const b=document.createElement('button');b.textContent=text;b.onclick=()=>Promise.resolve(fn()).catch(error);return b}
+async function rpc(method,params={}){const id=crypto.randomUUID();const r=await bridge({type:'mcp-request',hostId:'local',request:{id,method,params}});const msg=(r.messages||[]).find(m=>m.type==='mcp-response'&&m.message?.id===id)?.message;if(!msg)throw Error('未收到 Codex 响应');if(msg.error)throw Error(msg.error.message||JSON.stringify(msg.error));return msg.result}
+function threadActivityTime(t){return Number(t.recencyAt??t.updatedAt??t.createdAt??0)}
+function recentThreads(rows){return [...rows].sort((a,b)=>threadActivityTime(b)-threadActivityTime(a)||String(a.id).localeCompare(String(b.id)))}
+function renderList(){if(deferThreadListRender())return;threadRows=recentThreads(threadRows);renderPinnedThreads();const list=$('threads');list.replaceChildren();const rows=orderedThreadRows('threads',threadRows.filter(t=>!desktopThreadPins.has(t.id)));for(const t of rows)list.append(makeThreadRow(t));if(!rows.length)list.textContent=threadRows.length?'其余聊天会显示在这里。':'暂时没有聊天，可以新建一个。';$('more').hidden=!cursor;if(typeof renderWorkspaces==='function')renderWorkspaces()}
+
+async function list(more=false){clearError();const r=await listThreads({limit:more?30:Math.max(30,threadRows.length),sortKey:'recency_at',...(more&&cursor?{cursor}:{} )});threadRows=more?threadRows.concat(r.data||[]):r.data||[];cursor=r.nextCursor;renderList()}
+function threadDisplayTitle(t,fallback='新聊天'){
+ const preview=t?.preview?.trim(),desktop=desktopThreadRows.get(t?.id);
+ const desktopTitle=desktop?.name?.trim();
+ const isPath=value=>value&&value===(t?.cwd||desktop?.cwd);
+ return t?.name?.trim()||(!isPath(desktopTitle)&&desktopTitle)||(!isPath(preview)&&preview?.slice(0,90))||fallback;
+}
+function setChatTitle(t){const title=threadDisplayTitle(t);$('appTitle').textContent=title;$('appTitle').title=title;$('chatTitle').textContent=title;document.title=title+' · Codex'}
+function showChat(t){if(typeof saveChatDraft==='function')saveChatDraft();selected=t;if(typeof restoreChatDraft==='function')restoreChatDraft(t.id);if(typeof rememberChat==='function')rememberChat(t.id);if(typeof refreshComposer==='function')refreshComposer();setThemePickerOpen(false);$('home').hidden=true;$('chat').hidden=false;$('back').hidden=false;$('ownershipNote').textContent='电脑端已打开的聊天会通过应用消息接口发送；“复制上下文续聊”可选。';renderThread(t);requestAnimationFrame(()=>{if(selected?.id===t.id)goLatest()})}
+async function fetchThread(id,previous){
+ const snapshot=params=>desktopRpc('phone/thread/snapshot',{threadId:id,...params});
+ const recent=await snapshot(previous&&threadRevisions.has(id)?{revision:threadRevisions.get(id)}:{});
+ if(recent.unchanged&&previous)return previous;
+ const latest=[...(recent.thread.turns||[])],prior=previous?.turns||[];
+ let cursor=recent.nextCursor;
+ const known=new Set(prior.map(t=>t.id));
+ let overlaps=latest.some(t=>known.has(t.id));
+ // After missed polls, fill a short gap before joining the two history ranges.
+ for(let pages=0;prior.length&&latest.length&&!overlaps&&cursor&&pages<5;pages++){
+  const older=await snapshot({cursor});
+  const page=older.thread.turns||[];
+  if(!page.length)break;
+  latest.unshift(...page);
+  overlaps=page.some(t=>known.has(t.id));
+  cursor=older.nextCursor===cursor?null:older.nextCursor;
+ }
+ const keepPrior=overlaps||!latest.length&&prior.length>0;
+ const turns=keepPrior?[...prior]:[];
+ for(const turn of latest){const index=turns.findIndex(t=>t.id===turn.id);if(index<0)turns.push(turn);else turns[index]=turn}
+ if(!keepPrior)historyCursors.set(id,cursor||null);
+ if(recent.revision!==undefined)threadRevisions.set(id,recent.revision);
+ const thread={...previous,...recent.thread,turns};reconcileThreadActivity(thread);return thread
+}
+async function openThread(id){clearError();const sequence=++openSequence;opening=true;showChat(threadCache.get(id)||{...(listedThread(id)||{}),id,turns:[]});$('turnState').textContent='正在打开…';$('send').disabled=true;try{const t=await fetchThread(id,threadCache.get(id));threadCache.set(id,t);if(sequence===openSequence&&selected?.id===id){selected=t;renderThread(t);requestAnimationFrame(()=>{if(sequence===openSequence&&selected?.id===id)goLatest()});markThreadRead(id).catch(error)}}catch(e){if(sequence===openSequence)historyError(id,e)}finally{if(sequence===openSequence){opening=false;refreshOperationControls()}}}
+async function loadOlder(){if(!selected)return;const id=selected.id,cursor=historyCursors.get(id);if(!cursor)return;const button=$('older');button.disabled=true;button.textContent='正在加载…';try{const r=await desktopRpc('phone/thread/snapshot',{threadId:id,cursor});if(selected?.id!==id||historyCursors.get(id)!==cursor)return;const height=document.documentElement.scrollHeight;const known=new Set(selected.turns.map(t=>t.id));selected.turns=[...(r.thread.turns||[]).filter(t=>!known.has(t.id)),...selected.turns];historyCursors.set(id,r.nextCursor||null);threadCache.set(id,selected);renderThread(selected);window.scrollBy(0,document.documentElement.scrollHeight-height)}catch(e){if(selected?.id===id)error(e)}finally{button.disabled=false;button.textContent='加载更早消息'}}
+function atLatest(){return window.innerHeight+window.scrollY>=document.documentElement.scrollHeight-100}
+function updateLatestButton(){$('toLatest').hidden=!selected||atLatest()}
+function goLatest(){if(!selected||$('chat').hidden)return;window.scrollTo({top:document.documentElement.scrollHeight,behavior:'instant'});updateLatestButton()}
+function parseQuestionReply(text){const match=String(text||'').trim().match(/^<send_user_message_question_reply>\s*([\s\S]*?)\s*<\/send_user_message_question_reply>$/);if(!match)return null;try{const value=JSON.parse(match[1]),rows=Array.isArray(value)?value:[value];return rows.every(r=>typeof r.questionItemId==='string'&&typeof r.answer==='string')?rows:null}catch{return null}}
+function userMessageText(item,threadId){if(item.type==='userMessage'||item.type==='steeringUserMessage'&&item.status==='accepted'){const text=(item.content||item.input||[]).map(c=>c.text||(c.type==='image'?'[图片]':'')).join('\n');const answers=parseQuestionReply(text);return answers?answers.map(a=>'回答：'+a.answer).join('\n'):text;}if(item.type!=='functionCallOutput'||item.namespace!=='codex_app'||item.name!=='send_message_to_thread'||typeof item.output!=='string')return null;const match=item.output.trim().match(/^<codex_delegation>\s*<source_thread_id>([^<]+)<\/source_thread_id>\s*<input>([\s\S]*)<\/input>\s*<\/codex_delegation>$/);return match&&match[1].trim()===threadId?match[2]:null}
+function contentText(item,threadId){const userText=userMessageText(item,threadId);if(userText!==null)return userText;if(item.type==='agentMessage')return item.text||item.questions?.map(q=>q.title).join('\n')||'';if(item.type==='commandExecution')return '$ '+(item.command||'')+'\n'+(item.aggregatedOutput||item.status||'');if(item.type==='fileChange')return '文件变更\n'+(item.changes||[]).map(c=>c.path).join('\n');if(item.type==='mcpToolCall')return '工具：'+item.server+' / '+item.tool+' · '+item.status;return ''}
+function reconcileThreadActivity(t){const latest=t.turns?.at(-1),status=t.status?.type;if(!['active','idle'].includes(status))return;const item=latest?.items?.findLast(i=>['commandExecution','fileChange','mcpToolCall','agentMessage'].includes(i.type));const executing=item&&['inProgress','running'].includes(item.status);const label=executing?(item.type==='commandExecution'?'正在执行命令…':item.type==='fileChange'?'正在修改文件…':'正在调用工具…'):'正在思考中…';liveActivity.set(t.id,{running:status==='active',turnId:latest?.id,label,status:t.status});}
+function updateActivity(t=selected){if(!t){$('activity').hidden=true;return}const latest=t.turns?.at(-1);let live=liveActivity.get(t.id);if(live?.running&&latest&&latest.status!=='inProgress'&&(live.turnId===latest.id||(live.baseTurnId&&live.baseTurnId!==latest.id))){liveActivity.delete(t.id);live=undefined}const finished=live?.running===false&&(!live.turnId||live.turnId===latest?.id);const running=!finished&&(latest?.status==='inProgress'||t.status?.type==='active'||live?.running===true);const waiting=[...pendingApprovals.values()].some(e=>e.request.params?.threadId===t.id)||(t.status?.activeFlags||[]).some(f=>/waiting/i.test(f));const active=running||waiting;const node=$('activity');node.hidden=!active;node.dataset.waiting=String(waiting);const label=waiting?'等待你的确认…':live?.running&&live.label?live.label:'正在思考中…';if(node.textContent!==label)node.textContent=label;return active}
+function recordActivity(value){const p=value.params||{},id=p.threadId||p.turn?.threadId;if(!id)return;const method=value.method;let state=liveActivity.get(id)||{};if(method==='turn/started')state={running:true,turnId:p.turn?.id||p.turnId,label:'正在思考中…'};else if(method==='turn/completed')state={running:false,turnId:p.turn?.id||p.turnId,turnStatus:p.turn?.status};else if(method==='thread/status/changed'){if(p.status?.type==='active')state={...state,running:true,status:p.status};else if(p.status?.type==='idle')state={...(state.running===false?state:{}),running:false,status:p.status}}else if(method==='item/started'){const type=p.item?.type;state={...state,running:true,label:type==='commandExecution'?'正在执行命令…':type==='fileChange'?'正在修改文件…':type==='mcpToolCall'?'正在调用工具…':type==='agentMessage'?'正在回复…':'正在思考中…'}}else if(method==='item/agentMessage/delta')state={...state,running:true,label:'正在回复…'};else if(method==='item/completed')state={...state,label:'正在思考中…'};liveActivity.set(id,state);if(typeof desktopThreadStates!=='undefined')desktopThreadStates.set(id,state.status||{type:state.running?'active':'idle'});if(typeof refreshThreadIndicators==='function')refreshThreadIndicators();if(method==='turn/completed'&&typeof syncThreadState==='function')syncThreadState().catch(()=>{});if(selected?.id===id){updateActivity();if(typeof updateTaskControls==='function')updateTaskControls()}}
+const answerDateFormat=new Intl.DateTimeFormat('zh-CN',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'});
+const answerIcons={
+ copy:'<rect x="8" y="8" width="13" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/>',
+ more:'<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
+ branch:'<circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="6" r="2"/><path d="M6 8v8m12-8a7 7 0 0 1-7 7H6"/>'
+};
+function answerIcon(name){return '<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+answerIcons[name]+'</svg>'}
+const answerKeyKinds=new Map([
+ ...['结论','总结','结果','重点','建议','推荐'].map(text=>[text,'conclusion']),
+ ...['下一步','待办','待确认','待验证','待验收','仍需你测试／操作'].map(text=>[text,'followup']),
+ ...['注意','警告','风险','失败','阻塞','限制'].map(text=>[text,'warning'])
+]);
+function appendAnswerInline(node,text){
+ const parts=/(\x60([^\x60\n]+)\x60|\*\*([^*\n]+)\*\*)/g;
+ let end=0;
+ for(const match of text.matchAll(parts)){
+  node.append(text.slice(end,match.index));
+  const part=document.createElement(match[2]!==undefined?'code':'strong');
+  part.textContent=match[2]??match[3];node.append(part);
+  end=match.index+match[0].length;
+ }
+ node.append(text.slice(end));
+}
+function appendAnswerLine(node,text,heading=false){
+ const prefix=/^(?:\*\*([^*\r\n]+)\*\*([:：][ \t]*)?|([^:：\r\n]+?)([:：][ \t]*|$))/.exec(text);
+ if(prefix){
+  const raw=prefix[1]??prefix[3],suffix=prefix[2]??prefix[4]??'';
+  const label=raw.trim().replace(/[:：]$/,'').replace(/^【(.+)】$/,'$1');
+  const kind=answerKeyKinds.get(label),separator=suffix||(/[:：]$/.test(raw)?raw.at(-1):'');
+  if(kind&&(heading||separator||prefix[0].length===text.length)){
+   const mark=document.createElement('span');mark.className='answer-key '+kind;mark.textContent=raw+suffix;node.append(mark);
+   text=text.slice(prefix[0].length);
+  }
+ }
+ appendAnswerInline(node,text);
+}
+function renderAnswerText(body,text,formatted){
+ body.classList.toggle('answer-text',formatted);
+ if(!formatted){body.textContent=text;return}
+ const content=document.createDocumentFragment(),lines=text.split(/\r?\n/);
+ const headingPattern=/^ {0,3}(#{1,6})\s+(.+)$/;
+ const fencePattern=/^ {0,3}(\x60{3,}|~{3,})(.*)$/;
+ const listPattern=/^ {0,3}([-+*]|\d{1,9}[.)])\s+(.+)$/;
+ const quotePattern=/^ {0,3}>\s?/;
+ const block=(tag,value,isHeading=false)=>{
+  const el=document.createElement(tag);
+  for(const [index,line] of value.split('\n').entries()){
+   if(index)el.append('\n');
+   appendAnswerLine(el,line,isHeading);
+  }
+  content.append(el);
+ };
+ for(let i=0;i<lines.length;){
+  const line=lines[i++];
+  if(!line.trim())continue;
+  const fence=fencePattern.exec(line),heading=headingPattern.exec(line),item=listPattern.exec(line);
+  if(fence){
+   const close=new RegExp('^ {0,3}'+fence[1][0]+'{'+fence[1].length+',}\\s*$'),code=[];
+   while(i<lines.length&&!close.test(lines[i]))code.push(lines[i++]);
+   if(i<lines.length)i++;
+   const pre=document.createElement('pre'),body=document.createElement('code');
+   pre.tabIndex=0;body.textContent=code.join('\n');pre.append(body);content.append(pre);
+  }else if(heading){
+   block('h'+Math.min(6,heading[1].length+2),heading[2].replace(/\s+#+\s*$/,'').trim(),true);
+  }else if(item){
+   const ordered=/^\d/.test(item[1]),list=document.createElement(ordered?'ol':'ul');
+   if(ordered)list.start=parseInt(item[1],10);
+   for(let current=item;current;){
+    const li=document.createElement('li');appendAnswerLine(li,current[2]);list.append(li);
+    current=listPattern.exec(lines[i]||'');
+    if(!current||/^\d/.test(current[1])!==ordered)break;
+    i++;
+   }
+   content.append(list);
+  }else if(quotePattern.test(line)){
+   const quote=[line.replace(quotePattern,'')];
+   while(i<lines.length&&quotePattern.test(lines[i]))quote.push(lines[i++].replace(quotePattern,''));
+   block('blockquote',quote.join('\n'));
+  }else{
+   const paragraph=[line];
+   while(i<lines.length&&lines[i].trim()&&![headingPattern,fencePattern,listPattern,quotePattern].some(pattern=>pattern.test(lines[i])))paragraph.push(lines[i++]);
+   block('p',paragraph.join('\n'));
+  }
+ }
+ body.replaceChildren(content);
+}
+function finalAnswer(turn){
+ if(turn.status!=='completed')return null;
+ const answers=(turn.items||[]).filter(item=>item.type==='agentMessage'&&item.text?.trim()&&!item.questions?.length);
+ return answers.findLast(item=>item.phase==='final_answer')||answers.findLast(item=>item.phase==null);
+}
+function answerDate(value){if(!Number.isFinite(value)||value<=0)return null;const date=new Date(value);return Number.isFinite(date.getTime())?date:null}
+let answerBranchPending=false;
+function renderAnswerActions(node,t,turn,text,item){
+ if(text===null){node._actions?.remove();node._actions=null;return}
+ const completed=answerDate(turn.completedAt*1000)||answerDate(item.completedAtMs);
+ const started=answerDate(turn.startedAt*1000);
+ const duration=Number.isFinite(turn.durationMs)&&turn.durationMs>=0?turn.durationMs:null;
+ let bar=node._actions;
+ if(!bar){
+  bar=document.createElement('div');bar.className='answer-actions';
+  bar.innerHTML='<button type="button" data-copy aria-label="复制回答" title="复制回答">'+answerIcon('copy')+'</button>'
+   +'<button type="button" data-more aria-label="更多回答操作" aria-expanded="false" title="更多">'+answerIcon('more')+'</button>'
+   +'<time title="结束时间（北京时间）"></time><div class="answer-options" hidden>'
+   +'<button type="button" data-branch>'+answerIcon('branch')+'分支到新聊天</button>'
+   +'<details><summary>统计信息</summary><dl></dl></details></div>'
+   +'<span class="answer-feedback" role="status" hidden></span>';
+  node._actions=bar;node.append(bar);
+  const copy=bar.querySelector('[data-copy]'),branch=bar.querySelector('[data-branch]'),feedback=bar.querySelector('.answer-feedback');
+  const announce=message=>{feedback.textContent=message;feedback.hidden=false;updateLatestButton()};
+  const more=bar.querySelector('[data-more]'),options=bar.querySelector('.answer-options');
+  more.onclick=()=>{options.hidden=!options.hidden;more.setAttribute('aria-expanded',String(!options.hidden));updateLatestButton()};
+  bar.addEventListener('toggle',updateLatestButton,true);
+  copy.onclick=async()=>{try{await navigator.clipboard.writeText(bar._text);announce('已复制')}catch{announce('复制失败，请选中回答正文复制')}};
+  branch.onclick=async()=>{
+   if(selected?.id!==t.id||answerBranchPending)return;
+   const sequence=openSequence;
+   answerBranchPending=branch.disabled=true;
+   try{
+    requireChatReady();announce('正在创建分支…');
+    const result=await desktopRpc('thread/fork',{threadId:t.id,cwd:selected.cwd,turnId:turn.id});
+    if(!result.thread?.id)throw Error('桌面未返回新聊天');
+    announce('已创建分支');
+    if(selected?.id===t.id&&openSequence===sequence)await openThread(result.thread.id);
+   }catch(e){announce(e.message||'分支失败')}finally{answerBranchPending=branch.disabled=false}
+  };
+ }
+ const changedText=bar._text!==text;bar._text=text;
+ const signature=JSON.stringify([started,completed,duration]);
+ if(!changedText&&signature===bar._stats)return;
+ bar._stats=signature;
+ const time=bar.querySelector('time');
+ time.textContent=completed?'结束于 '+answerDateFormat.format(completed):'结束时间未记录';
+ time.dateTime=completed?.toISOString()||'';
+ const dl=bar.querySelector('dl');
+ dl.replaceChildren();
+ for(const [label,value] of [
+  ['开始时间',started?answerDateFormat.format(started):'未记录'],
+  ['结束时间',completed?answerDateFormat.format(completed):'未记录'],
+  ['轮次耗时',duration===null?'未记录':new Intl.NumberFormat('zh-CN',{maximumFractionDigits:1}).format(duration/1000)+' 秒'],
+  ['回答字符数',String([...text].length)]
+ ]){
+  const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=label;dd.textContent=value;dl.append(dt,dd);
+ }
+}
+function renderThread(t){if(selected?.id===t.id){setChatTitle(t);if(typeof composerSettings!=='undefined')$('modelButton').textContent=composerSettings.get(t.id)?.model||t.model||'模型';}const box=$('messages'),nearBottom=atLatest(),nodes=[];for(const turn of t.turns||[]){const answer=finalAnswer(turn);for(const [index,item] of (turn.items||[]).entries()){const text=contentText(item,t.id),isUser=userMessageText(item,t.id)!==null;if(!text)continue;const formatted=item===answer,work=!isUser&&item.type!=='agentMessage',key=t.id+':'+turn.id+':'+(item.id||index);let node=renderNodes.get(key);if(!node){node=document.createElement(work?'details':'div');node.className='bubble'+(isUser?' user':work?' work':'');const heading=document.createElement(work?'summary':'div');heading.className=work?'':'role';heading.textContent=isUser?'你':work?item.type==='commandExecution'?'执行记录 · 命令':item.type==='fileChange'?'执行记录 · 文件变更':'执行记录 · 工具':'Codex';const body=document.createElement('div');if(work)body.className='work-body';node.append(heading,body);node._body=body;if(work)node.addEventListener('toggle',()=>{if(node.open)node._body.textContent=node._text||'';else node._body.textContent='';updateLatestButton()});renderNodes.set(key,node)}if(item.type==='agentMessage'&&item.questions?.length&&typeof renderAsyncQuestion==='function'){renderAsyncQuestion(node,t,item)}else if(node._text!==text||node._formatted!==formatted){node._text=text;node._formatted=formatted;if(!work||node.open)renderAnswerText(node._body,text,formatted)}if(!isUser&&!work)renderAnswerActions(node,t,turn,item===answer?text:null,item);nodes.push(node)}}let position=box.firstChild;for(const node of nodes){if(node===position)position=position.nextSibling;else box.insertBefore(node,position)}while(position){const next=position.nextSibling;position.remove();position=next}const historicalActive=(t.turns||[]).findLast(x=>x.status==='inProgress');const active=(t.turns?.at(-1)?.status==='inProgress')?historicalActive:null;turnId=active?.id||null;if(!pendingSend(t.id)&&!/发送失败/.test($('turnState').textContent))$('turnState').textContent='';updateActivity(t);$('stop').hidden=!active;if(typeof updateTaskControls==='function')updateTaskControls();refreshOperationControls();$('empty').hidden=box.childElementCount>0;$('older').hidden=!historyCursors.get(t.id);if(nearBottom)goLatest();else updateLatestButton()}
+async function readCurrent(){if(!selected||opening||reading||$('older').disabled||(!turnId&&!selected.turns?.length&&loadedThreads.has(selected.id)))return;reading=true;const id=selected.id;try{const t=await fetchThread(id,selected);threadCache.set(id,t);if(selected?.id===id){clearHistoryError(id);selected=t;renderThread(selected)}}catch(e){if(!/list_turns is not supported yet|no rollout found/i.test(e.message))historyError(id,e)}finally{reading=false}}
+function scheduleRead(delay=2000){if(!refreshTimer)refreshTimer=setTimeout(()=>{refreshTimer=null;readCurrent().catch(error)},Math.max(2000,delay))}
+async function create(){if(createBusy||pendingCreate()){refreshOperationControls();return}requireChatReady();clearError();const cwd=$('cwd').value.trim();if(!cwd)throw Error('请填写电脑上的项目目录');createBusy=true;localStorage.setItem('codex-mobile-cwd',cwd);try{const receipt=await submitOperation('create',{cwd});if(!['succeeded','failed'].includes(receipt.status))error('正在确认电脑是否已创建会话，请勿重复点击；可继续查看其他聊天。');return receipt.result?.thread}finally{createBusy=false;refreshOperationControls()}}
+async function forkCurrent(){if(!selected)return;requireChatReady();clearError();$('resumeCopy').disabled=true;try{const r=await desktopRpc('thread/fork',{threadId:selected.id,cwd:selected.cwd});showChat(r.thread);$('ownershipNote').textContent='已创建带上下文的新聊天，现在可以在手机继续。原聊天保留。'}finally{$('resumeCopy').disabled=false}}
+$('resumeCopy').onclick=()=>forkCurrent().catch(error);
+async function sendToDesktop(id,text,details={}){const result=await submitOperation('send',{threadId:id,text},details);if(result.status==='failed')throw Error(result.error||'电脑未接受消息');if(result.status!=='succeeded')throw pendingReceiptError();desktopThreads.add(id);return result}
+async function send(e){e.preventDefault();if($('send').type==='button')return;clearError();const draft=$('prompt').value.trim();if(selected&&typeof openTypedGoal==='function'&&openTypedGoal(draft))return;const text=typeof attachmentPrompt==='function'?attachmentPrompt(draft):draft;if(!text||!selected||pendingSend(selected.id)||opening)return;const id=selected.id;try{if(typeof saveChatDraft==='function')saveChatDraft(id);await sendToDesktop(id,text,{draft,attachmentPaths:typeof attachmentsFor==='function'?attachmentsFor(id).map(file=>file.path):[]})}catch(e){if(selected?.id===id)$('turnState').textContent=e.pendingOperation?e.message:'发送失败，草稿已保留：'+(e.message||String(e));if(!e.pendingOperation)error(e)}finally{refreshOperationControls()}}
+async function approvalApi(body){const r=await fetch('/mobile-api/approvals',{method:body?'POST':'GET',headers:{...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined,cache:'no-store'});const value=await readJsonResponse(r);if(!r.ok)throw Error(value.error||'审批连接失败（HTTP '+r.status+'）');return value}
+let approvalReading=false;
+async function syncApprovals(){if(approvalReading||!privateAccess)return;approvalReading=true;try{const r=await approvalApi();$('approvalConnection').textContent=r.desktopConnected?'电脑会话审批已连接':'电脑会话审批未连接；手机后台审批'+(r.connected?'已连接':'正在重连');const ids=new Set(r.requests.map(x=>String(x.id)));const authoritative=r.desktopConnected||r.connected||r.requests.length>0;for(const [id,entry] of pendingApprovals)if(authoritative&&!ids.has(id)){entry.card.remove();pendingApprovals.delete(id)}r.requests.forEach(approval);updateApprovals()}finally{approvalReading=false}}
+function updateApprovals(){updateActivity();if(typeof refreshThreadIndicators==='function')refreshThreadIndicators();const count=pendingApprovals.size;$('approvalCount').textContent='待审批 '+count;$('approvalTitle').textContent=count?[...pendingApprovals.values()][0].card._title:'需要你的确认';for(const entry of pendingApprovals.values())entry.card.querySelector('.approval-title').hidden=count===1;if(!count)$('approvalDialog').close()}
+function approvalField(card,label,value,code=false){if(value===undefined||value===null||value==='')return;const field=document.createElement('div');field.className='approval-field';field.dataset.field=label;const name=document.createElement('span');name.textContent=label;const body=document.createElement(code?'pre':'div');body.className='approval-value';body.textContent=Array.isArray(value)?value.join('\n'):String(value);field.append(name,body);card.append(field)}
+function permissionFields(card,permissions,prefix=''){const names={network:'网络访问',fileSystem:'文件访问',filesystem:'文件访问',read:'读取',write:'写入',readPaths:'可读取的路径',writePaths:'可写入的路径',allowedDomains:'允许访问的域名',domains:'访问域名',enabled:'启用',access:'访问范围',fullAccess:'完整访问',restricted:'受限访问'};for(const [key,value] of Object.entries(permissions||{})){const label=(prefix?prefix+' · ':'')+(names[key]||key);if(value&&typeof value==='object'&&!Array.isArray(value))permissionFields(card,value,label);else approvalField(card,label,typeof value==='boolean'?(value?'允许':'不允许'):value)}}
+function approval(request){const key=String(request.id);if(pendingApprovals.has(key))return;const p=request.params||{},method=request.method,card=document.createElement('div');card.className='approval';pendingApprovals.set(key,{request,card});const titles={'item/commandExecution/requestApproval':'允许执行命令？','item/fileChange/requestApproval':'允许修改这些文件？','item/permissions/requestApproval':'允许申请的权限？','item/tool/requestUserInput':'需要你的选择','mcpServer/elicitation/request':'需要你补充信息'};const h=document.createElement('strong');h.className='approval-title';h.textContent=p.title||titles[method]||'需要你的确认';card._title=h.textContent;h.hidden=true;const source=document.createElement('span');source.className='approval-source';const thread=threadRows.find(t=>t.id===p.threadId);source.textContent=(key.startsWith('desktop:')?'电脑会话':'手机会话')+(thread?' · '+(thread.name||thread.preview?.slice(0,60)||'未命名聊天'):'');card.append(h,source);
+approvalField(card,'申请原因',p.reason||p.justification||p.message);if(p.command)approvalField(card,'将执行的命令',p.command,true);approvalField(card,'工作目录',p.cwd);
+if(method==='item/fileChange/requestApproval'){approvalField(card,'申请写入的路径',p.grantRoot);const changes=p.changes||p.fileChanges||[];for(const change of Array.isArray(changes)?changes:Object.entries(changes).map(([path,value])=>({path,...value}))){approvalField(card,'变更文件',change.path||change.filePath);approvalField(card,'修改内容',change.diff||change.unifiedDiff,true)}if(!p.grantRoot&&!Object.keys(changes).length){const hint=document.createElement('p');hint.className='approval-hint';hint.textContent='Codex 正在请求修改文件。具体变更可在聊天执行记录中查看。';card.append(hint)}}
+if(method==='item/permissions/requestApproval')permissionFields(card,p.permissions);if(p.networkApprovalContext)permissionFields(card,p.networkApprovalContext,'网络访问');
+const actions=document.createElement('div');actions.className='approval-actions';const inlineError=document.createElement('div');inlineError.className='approval-error';inlineError.setAttribute('role','alert');const respond=async result=>{const buttons=card.querySelectorAll('button');buttons.forEach(b=>b.disabled=true);inlineError.textContent='正在提交…';card.setAttribute('aria-busy','true');try{await approvalApi({id:request.id,result});pendingApprovals.delete(key);card.remove();updateApprovals();scheduleRead()}catch(e){inlineError.textContent=e.message||String(e)}finally{card.removeAttribute('aria-busy');buttons.forEach(b=>b.disabled=false)}};
+function choice(label,result,primary=false){const b=button(label,()=>respond(result));if(primary)b.className='primary';actions.append(b)}
+if(method==='item/permissions/requestApproval'){choice('允许本次', {permissions:p.permissions,scope:'turn'},true);choice('拒绝',{permissions:{},scope:'turn'})}
+else if(method.endsWith('/requestApproval')){const offered=Array.isArray(p.availableDecisions)?p.availableDecisions:null;const supports=d=>!offered||offered.some(x=>typeof d==='string'?x===d:JSON.stringify(x)===JSON.stringify(d));if(supports('accept'))choice('允许本次',{decision:'accept'},true);const amendment=p.proposedExecpolicyAmendment;if(Array.isArray(amendment)&&amendment.length){const decision={acceptWithExecpolicyAmendment:{execpolicy_amendment:amendment}};if(supports(decision)){approvalField(card,'允许同类命令的范围',amendment.join(' '),true);choice('允许同类命令',{decision})}}for(const rule of p.proposedNetworkPolicyAmendments||[]){if(rule.action!=='allow')continue;const decision={applyNetworkPolicyAmendment:{network_policy_amendment:rule}};if(supports(decision)){approvalField(card,'允许访问的域名',rule.host);choice('允许此域名',{decision})}}if(offered?.includes('acceptForSession')||(!offered&&(p.networkApprovalContext||method==='item/fileChange/requestApproval'&&p.grantRoot)))choice('本会话允许',{decision:'acceptForSession'});choice('拒绝',{decision:offered?.includes('cancel')&&!offered.includes('decline')?'cancel':'decline'})}
+else if(method==='item/tool/requestUserInput'){const inputs=[];for(const [index,q] of (p.questions||[]).entries()){const field=document.createElement('fieldset');field.className='approval-question';const legend=document.createElement('legend');legend.textContent=q.question;field.append(legend);const input=document.createElement('input');input.type=q.isSecret?'password':'text';input.placeholder=q.options?.length?'也可以填写其他回答':'请输入你的回答';input.setAttribute('aria-label',q.question);for(const option of q.options||[]){const label=document.createElement('label');label.className='approval-option';const radio=document.createElement('input');radio.type='radio';radio.name='approval-'+key+'-'+index;radio.value=option.label;radio.onchange=()=>{input.value=option.label};const text=document.createElement('span');text.textContent=option.label;if(option.description){const detail=document.createElement('small');detail.textContent=option.description;text.append(detail)}label.append(radio,text);field.append(label)}input.oninput=()=>field.querySelectorAll('input[type=radio]').forEach(r=>r.checked=r.value===input.value);field.append(input);card.append(field);inputs.push([q.id,input])}const submit=button('提交回答',()=>respond({answers:Object.fromEntries(inputs.map(([id,input])=>[id,{answers:[input.value]}]))}));submit.className='primary';actions.append(submit)}
+else if(method==='mcpServer/elicitation/request'){const schema=p.requestedSchema||{},fields=[];for(const [name,property] of Object.entries(schema.properties||{})){const field=document.createElement('label');field.textContent=property.title||name;let input;if(property.type==='boolean'){input=document.createElement('select');for(const [value,label] of [['','请选择'],['true','是'],['false','否']])input.add(new Option(label,value))}else if(property.enum){input=document.createElement('select');input.add(new Option('请选择',''));property.enum.forEach((v,i)=>input.add(new Option(property.enumNames?.[i]||String(v),String(v))))}else{input=document.createElement('input');input.type=property.type==='number'||property.type==='integer'?'number':property.format==='password'?'password':'text'}input.setAttribute('aria-label',property.title||name);if(property.description){const hint=document.createElement('p');hint.className='approval-hint';hint.textContent=property.description;field.append(hint)}field.append(input);card.append(field);fields.push([name,property,input])}if(fields.length){const submit=button('提交',()=>{const content={};for(const [name,property,input] of fields){if(input.value===''){if((schema.required||[]).includes(name)){inlineError.textContent='请填写：'+(property.title||name);return}continue}content[name]=property.type==='boolean'?input.value==='true':property.type==='number'||property.type==='integer'?Number(input.value):property.enum?property.enum.find(v=>String(v)===input.value):input.value}return respond({action:'accept',content})});submit.className='primary';actions.append(submit)}else{const hint=document.createElement('p');hint.className='approval-hint';hint.textContent='请根据上方说明完成操作，再确认继续。';card.append(hint);choice('确认继续',{action:'accept',content:{}},true)}choice('拒绝',{action:'decline',content:null})}
+else{const hint=document.createElement('p');hint.className='approval-hint';hint.textContent='此请求暂不支持快捷处理，请展开技术详情查看。';card.append(hint);const input=document.createElement('textarea');input.value='{}';input.setAttribute('aria-label','高级响应 JSON');const advanced=document.createElement('details');const label=document.createElement('summary');label.textContent='高级响应';advanced.append(label,input);card.append(advanced);actions.append(button('提交响应',()=>{try{return respond(JSON.parse(input.value))}catch{inlineError.textContent='响应格式有误，请填写有效 JSON。'}}))}
+const details=document.createElement('details');const summary=document.createElement('summary');summary.textContent='技术详情';const raw=document.createElement('pre');raw.textContent=JSON.stringify(p,null,2);details.append(summary,raw);card.append(details,inlineError,actions);$('approvals').append(card);updateApprovals();if(!$('approvalDialog').open)$('approvalDialog').showModal();}
+function event(value){if(!value||typeof value!=='object')return;if(value.messages)for(const m of value.messages)event(m);if(value.result&&value.result!==value)event(value.result);if(value.type==='mcp-request'&&value.request)syncApprovals().catch(error);if(value.type==='mcp-notification'){recordActivity(value);if(value.method==='phone/approvalsChanged')syncApprovals().catch(error);if(value.method==='error')error(value.params?.error?.message||JSON.stringify(value.params));if(value.params?.threadId===selected?.id||value.method==='turn/completed')scheduleRead(value.method==='turn/completed'?100:600)}}
+function connect(restart=false){
+ if(!privateAccess||(!restart&&eventStream))return;
+ eventStream?.close();
+ const stream=new EventSource('/mobile-api/events');eventStream=stream;
+ // EventSource handles reconnects; only the health endpoint decides readiness.
+ stream.onopen=()=>{if(eventStream!==stream)return;refreshConnectionHealth();syncApprovals().catch(error);if(selected)readCurrent().catch(error);list().catch(error)};
+ stream.onmessage=e=>{if(eventStream!==stream)return;try{event(JSON.parse(e.data))}catch(err){error(err)}};
+ stream.onerror=()=>{if(eventStream===stream)refreshConnectionHealth()};
+}
+function resumeConnection(){if(document.hidden||!privateAccess)return;lastConnectionResume=performance.now();refreshConnectionHealth(true);connect(true);checkPendingOperations();if(selected)readCurrent().catch(error)}
+function resumeOnForeground(){
+ if(performance.now()-lastConnectionResume<500)return;
+ resumeConnection();
+}
+window.addEventListener('pageshow',e=>{if(e.persisted)resumeOnForeground()});
+window.addEventListener('focus',resumeOnForeground);
+window.addEventListener('online',resumeOnForeground);
+document.addEventListener('resume',resumeOnForeground);
+document.addEventListener('visibilitychange',()=>{
+ if(document.hidden)lastConnectionResume=-Infinity;
+ else resumeOnForeground();
+});
+window.addEventListener('scroll',updateLatestButton,{passive:true});window.addEventListener('resize',updateLatestButton);$('toLatest').onclick=goLatest;$('older').onclick=loadOlder;new ResizeObserver(entries=>{document.documentElement.style.setProperty('--composer-height',$('form').getBoundingClientRect().height+'px');updateLatestButton()}).observe($('form'));$('cwd').value=localStorage.getItem('codex-mobile-cwd')||'';$('back').onclick=()=>{if(typeof saveChatDraft==='function')saveChatDraft();selected=null;if(typeof forgetChat==='function')forgetChat();$('appTitle').textContent='Codex 手机远控';$('appTitle').title='';document.title='Codex 手机远控';++openSequence;opening=false;updateLatestButton();$('home').hidden=false;$('chat').hidden=true;$('back').hidden=true;window.scrollTo({top:0,behavior:'instant'});requestAnimationFrame(()=>{if(!selected)window.scrollTo({top:0,behavior:'instant'})});list().catch(error)};$('new').onclick=()=>create().catch(error);$('refresh').onclick=()=>list().catch(error);$('more').onclick=()=>list(true).catch(error);$('form').onsubmit=send;$('stop').onclick=()=>pauseTask();setInterval(()=>checkPendingOperations(),3000);$('approvalLater').onclick=()=>$('approvalDialog').close();$('approvalCount').onclick=()=>{if(pendingApprovals.size)$('approvalDialog').showModal();else syncApprovals().catch(error)};setInterval(()=>syncApprovals().catch(error),2000);if(!privateAccess)error('请在手机上连接 Tailscale，再重新打开此页面。');else{$('send').disabled=true;$('new').disabled=true;refreshConnectionHealth();connect();}
+
+$('checkConnection').onclick=resumeConnection;
+</script>
+<dialog id="goalDialog" aria-labelledby="goalTitle">
+ <div class="toolbar"><strong id="goalTitle">会话目标</strong><button type="button" id="goalClose" aria-label="关闭" autofocus>×</button></div>
+ <p id="goalState" role="status"></p>
+ <p id="goalObjective" hidden></p>
+ <form id="goalForm" hidden>
+  <label for="goalInput">目标</label><textarea id="goalInput" required rows="3"></textarea>
+  <button type="submit" class="primary" id="goalCreate">设定目标</button>
+ </form>
+ <div id="goalActions" hidden>
+  <button type="button" id="goalStatus"></button>
+  <button type="button" id="goalClear">清除目标</button>
+ </div>
+</dialog>
+<script src="/mobile-controls.js"></script></html>
