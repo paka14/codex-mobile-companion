@@ -24,24 +24,17 @@ To show a clock for conversations with linked heartbeat automations, set `automa
 
 ## Start on Windows
 
-Install Node.js 24 or later, the official Codex desktop app for your Windows account, and Tailscale on the PC and phone. The launcher currently recognizes the `OpenAI.Codex` Windows app package, not a browser shortcut or another desktop distribution. Chrome is not required; use a current browser on the phone.
+For a Windows x64 portable ZIP, compare its SHA-256 against a trusted digest before extracting to a fresh directory. Node is bundled; no npm install is needed. A source checkout requires Node.js 24 or later. Install and sign in to the official Codex desktop app and Tailscale first (Tailscale is also needed on the phone). The launcher recognizes the `OpenAI.Codex` Windows app package.
 
-1. From Windows PowerShell, run `tailscale serve status`. On an unused test host, run `tailscale serve 4317` and keep its terminal open. If HTTPS port 443 is already configured, do not replace the existing service. See [Tailscale Serve](https://tailscale.com/docs/features/tailscale-serve) for setup and HTTPS prerequisites.
-2. Use [the example configuration](companion.config.example.json) for `companion.config.json` beside the launcher. In `origin`, set the exact HTTPS origin reported by Serve, without a trailing slash. Set `ownerLogin` to the account the phone uses in Tailscale. Only the configured login is allowed. Keep the real configuration out of Git.
-3. Run the preflight and then start the companion:
+1. Double-click `Start Companion.cmd`. Enter the exact Tailscale login from your phone and confirm the detected HTTPS name. A new profile under `%LOCALAPPDATA%\CodexMobileCompanion` allows existing conversation history, text replies and pending approvals. It does not allow creation, uploads, or edits to goals, models or permissions. Existing profiles are not changed and retain their previous capabilities.
+2. When prompted on a dedicated test host with no conflict, run `tailscale serve --https=443 http://127.0.0.1:4317` in another PowerShell window. Leave that window open and retry the launcher. Do not use `--bg`, Funnel, another service's mapping, or the desktop debug port. See [Tailscale Serve](https://tailscale.com/docs/features/tailscale-serve) for HTTPS prerequisites.
+3. Approve desktop launch when asked. After `[BRIDGE:READY]` appears, connect Tailscale on the phone and open the printed `/mobile` URL in your existing browser.
 
-```powershell
-.\Start-Companion.ps1 -Check
-.\Start-Companion.ps1
-```
+Run `powershell.exe -NoProfile -File .\Start-Companion.ps1 -Check` for a read-only preflight. Follow the first stopped layer: runtime, profile, Tailscale, Serve, desktop, or gateway. If the existing desktop is incompatible, save your work and quit Codex normally before retrying. On the phone, do not bypass certificate warnings; a 403 calls for checking the Tailscale login and a 503 for checking gateway and desktop readiness. Local readiness is not real-device acceptance.
 
-4. On the phone, connect Tailscale and open the Serve URL with `/mobile` appended. Check gateway readiness at `/mobile-api/ready` from the same phone when troubleshooting.
+Use Ctrl+C in the Companion window, then separately stop the dedicated Serve window. Quit Codex normally to close its debugger. Companion does not change Tailscale or Windows execution policy. Update by extracting to a fresh folder, and roll back by stopping Companion and running the previous verified folder. Back up the private profile and receipts. Do not run two gateways on the same data or blindly resend an uncertain write. Use `-ConfigPath` for an explicit profile and `-Setup` to stop after profile validation.
 
-`-Check` never starts or stops anything. `launch` means that no desktop is running and the launcher can try to start it; `ready` means that the listener matches the expected desktop process, not that its app interfaces have passed the web readiness check. For `existing-incompatible`, finish or save your work before quitting Codex normally, then rerun the launcher. It never closes an existing Codex. If you change the gateway port, use that port in the Serve command too.
-
-Use Ctrl+C in the gateway and Serve terminals to stop them. The desktop remains open; quit it normally when done to turn off the desktop debugger. The launcher does not set up Tailscale or change Windows execution policy. A custom file can be provided with `-ConfigPath`. To start only the gateway for development, run `npm.cmd start -- .\companion.config.json`.
-
-The data directory is relative to the configuration file unless an absolute path is provided. Keep this directory private: it contains uploaded files and operation receipts. Do not run more than one gateway against the same data directory.
+Build with `powershell.exe -NoProfile -File .\Build-WindowsPortable.ps1 -NodeArchive <archive> -OutputDirectory <directory> -Version <candidate>`. Download the exact official ZIP in [the Node lock](packaging/node-win-x64.json). The builder verifies the archive hash and the Node executable's Authenticode signature and includes the runtime license and component SBOM. The outer preview ZIP is unsigned; its checksum is not publisher authentication. Release signing and independent Windows-to-phone acceptance remain separate gates.
 
 ## Run the module checks
 

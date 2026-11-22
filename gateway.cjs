@@ -16,6 +16,10 @@ const desktopMethods = new Set([
   'thread/settings/update', 'thread/goal/get', 'thread/goal/set', 'thread/goal/clear', 'turn/interrupt',
 ]);
 const unrestrictedMethods = new Set(['thread/list', 'model/list']);
+const continuationMethods = new Set([
+  'phone/thread/snapshot', 'thread/list', 'thread/read', 'thread/turns/list',
+  'thread/goal/get', 'turn/interrupt',
+]);
 const fileLimit = 20 * 1024 * 1024;
 const headers = { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer' };
 const diagnosticCodes = new Set(['READY', 'DESKTOP_UNAVAILABLE', 'DESKTOP_RESTART_REQUIRED', 'DESKTOP_CHECK_PENDING', 'NETWORK_UNAVAILABLE']);
@@ -72,13 +76,14 @@ async function upload(body, dataDirectory) {
   return { name, path, size: buffer.length, mime: String(body.mime || 'application/octet-stream').slice(0, 200) };
 }
 
-function createGateway({ origin, ownerLogin, dataDirectory, desktop, reportError = () => {} }) {
+function createGateway({ origin, ownerLogin, dataDirectory, desktop, accessProfile, reportError = () => {} }) {
   const url = new URL(origin);
   if (url.protocol !== 'https:' || origin !== url.origin || url.port || !ownerLogin || !dataDirectory) {
     throw new Error('Configure an HTTPS origin, a Tailscale owner and a data directory.');
   }
   const access = { origin, ownerLogin, mode: 'tailscale-owner' };
-  const page = createMobilePage(access);
+  const continuationOnly = accessProfile === 'continue';
+  const page = createMobilePage(access, continuationOnly);
   const operations = new MobileOperations(join(dataDirectory, 'operations.json'), desktop);
   const snapshots = new MobileSnapshots((method, params) => desktop.rpc(method, params));
   const listeners = new Set();
@@ -146,6 +151,7 @@ function createGateway({ origin, ownerLogin, dataDirectory, desktop, reportError
             (!unrestrictedMethods.has(name) && !threadIdPattern.test(params.threadId || ''))) {
           throw new HttpError(400, 'Unsupported desktop action or invalid conversation ID.');
         }
+        if (continuationOnly && !continuationMethods.has(name)) throw new HttpError(403, 'Use Codex on the PC for this action.');
         const result = name === 'phone/thread/snapshot' ? await snapshots.get(params) : await desktop.rpc(name, params);
         return json(res, 200, result);
       }
@@ -165,6 +171,7 @@ function createGateway({ origin, ownerLogin, dataDirectory, desktop, reportError
         if (!method('GET', 'POST')) return;
         if (post) {
           const input = await readJson(req, 640_000);
+          if (continuationOnly && input.kind !== 'send') throw new HttpError(403, 'Start new conversations on the PC.');
           try { return json(res, 202, operations.submit(input)); }
           catch (e) {
             if (e.code) throw e;
@@ -192,6 +199,7 @@ function createGateway({ origin, ownerLogin, dataDirectory, desktop, reportError
         }
       }
       case '/mobile-api/upload':
+        if (continuationOnly) throw new HttpError(403, 'Add attachments in Codex on the PC.');
         if (method('POST')) return json(res, 200, await upload(await readJson(req, 29 * 1024 * 1024), dataDirectory));
         return;
       default:

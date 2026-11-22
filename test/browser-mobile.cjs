@@ -33,6 +33,7 @@ const approvalRequests = [
 async function run() {
   const channel = process.env.PLAYWRIGHT_CHANNEL;
   const screenshots = process.env.MOBILE_FIXTURE_SCREENSHOTS;
+  const continuationOnly = process.env.MOBILE_FIXTURE_CONTINUE === '1';
   const browser = await chromium.launch(channel ? { channel } : {});
   try {
     for (const width of [320, 390, 1280]) {
@@ -47,7 +48,11 @@ async function run() {
         const url = new URL(request.url());
         requests.push({ path: url.pathname, hasToken: url.searchParams.has('token'), auth: request.headers().authorization });
         switch (url.pathname) {
-          case '/mobile': return route.fulfill({ contentType: 'text/html; charset=utf-8', body: renderMobile(html, 'fixture', true) });
+          case '/mobile': {
+            const page = renderMobile(html, 'fixture', true);
+            return route.fulfill({ contentType: 'text/html; charset=utf-8', body: continuationOnly
+              ? page.replace('<html ', '<html data-access-profile="continue" ') : page });
+          }
           case '/mobile-controls.js': return route.fulfill({ contentType: 'text/javascript; charset=utf-8', body: controls });
           case '/mobile-diagnostics.js': return route.fulfill({ contentType: 'text/javascript; charset=utf-8', body: diagnostics });
           case '/mobile-api/diagnostics': return route.fulfill({ json: { schemaVersion: 1,
@@ -90,6 +95,22 @@ async function run() {
         }
       });
       await page.goto('https://companion.example.test/mobile');
+      if (continuationOnly) {
+        await page.getByText(thread.name, { exact: true }).waitFor();
+        for (const selector of ['#new', '.new-chat-path']) assert.equal(await page.locator(selector).isVisible(), false);
+        if (screenshots) await page.screenshot({ path: join(screenshots, 'companion-continue-home-' + width + '.png') });
+        await page.getByText(thread.name, { exact: true }).click();
+        await page.getByText('Example history', { exact: true }).waitFor();
+        for (const selector of ['#addAttachment', '#permissionsButton', '#modelButton', '#goalQuickActions', '#resumeCopy']) {
+          assert.equal(await page.locator(selector).isVisible(), false);
+        }
+        assert.equal(await page.locator('#send').isVisible(), true);
+        assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+        assert.deepEqual(errors, []);
+        if (screenshots) await page.screenshot({ path: join(screenshots, 'companion-continue-thread-' + width + '.png') });
+        await page.close();
+        continue;
+      }
       assert.equal(await page.locator('#cwd').inputValue(), '');
       assert.equal(await page.locator('#pinnedSection').count(), 0);
       await page.locator('#diagnosticsOpen').click();

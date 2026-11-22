@@ -13,20 +13,15 @@
 
 ## 在 Windows 试用
 
-先安装 Node.js 24 或更高版本、适用于当前 Windows 用户的官方 Codex 桌面应用，以及两端的 Tailscale。启动器当前只识别 Windows 的 `OpenAI.Codex` 应用包。
+使用 Windows x64 便携 ZIP 时，先与可信来源的校验值比对 SHA-256，再解压到新目录。包中已带 Node，不用安装 npm 依赖；源码模式需要 Node.js 24 或更高版本。先在电脑安装并登录官方 Codex 桌面应用和 Tailscale，手机也要安装并登录 Tailscale。启动器只识别 `OpenAI.Codex` Windows 应用包。
 
-1. 在 PowerShell 用 `tailscale serve status` 查看现有配置。只在测试机且确认 HTTPS 443 没被现有服务占用时，运行 `tailscale serve 4317`，保留该终端。不要启用 Funnel。HTTPS 配置见 [Tailscale Serve 文档](https://tailscale.com/docs/features/tailscale-serve)。
-2. 根据 [配置示例](companion.config.example.json) 创建同目录的 `companion.config.json`。`origin` 填 Serve 给出的 HTTPS 源，不带结尾斜杠；`ownerLogin` 填手机在 Tailscale 上使用的账号。真实配置和数据目录不应上传。
-3. 在另一个 PowerShell 中先预检，再启动：
+1. 双击 `Start Companion.cmd`，输入手机 Tailscale 上显示的登录名，确认检测到的 HTTPS 主机名。新配置保存在 `%LOCALAPPDATA%\CodexMobileCompanion`，允许继续已有会话、读取历史、发送文字及处理已有审批；不允许新建、上传文件或改模型、权限、目标。已有配置不改，保留原功能。
+2. 仅在独立测试环境中，若启动器提示未配置专用映射，在另一 PowerShell 窗口按提示运行 `tailscale serve --https=443 http://127.0.0.1:4317`，保留窗口，再重开启动器。不要加 `--bg`、启用 Funnel、覆盖其他服务或代理调试口。HTTPS 设置见 [Tailscale Serve 文档](https://tailscale.com/docs/features/tailscale-serve)。
+3. 按需确认启动 Codex。看到 `[BRIDGE:READY]` 和 `/mobile` 地址后，在已连 Tailscale 的手机现有浏览器打开；不需要 Chrome 或伴侣 App。
 
-```powershell
-.\Start-Companion.ps1 -Check
-.\Start-Companion.ps1
-```
+预检：`powershell.exe -NoProfile -File .\Start-Companion.ps1 -Check` 不创建配置或启停服务。按首条 `STOPPED` 处理：`RUNTIME` 查解压或 Node，`PROFILE` 查主机名和账号，`TAILSCALE` 查登录，`SERVE` 查专用映射，`DESKTOP` 查桌面监听，`GATEWAY` 查端口和桥接。已有 Codex 不兼容时先保存工作再正常退出。手机遇到证书错误不要绕过；403 查手机账号，503 查电脑网关及 Codex。就绪不代表实机验收通过。
 
-4. 手机连上 Tailscale，打开 Serve 地址加 `/mobile`。排错时在同一手机打开 `/mobile-api/ready`；`ready: true` 表示网关检测到了必要的桌面接口，不代表已验收真实操作。
-
-预检不启停进程。遇到 `existing-incompatible`，先保存桌面工作，再正常退出 Codex 后重试。遇到 `unsafe-listener`，不要代理该端口或接管未知进程；检查端口占用或在独立测试机重试。结束时分别在网关和 Serve 终端按 Ctrl+C，正常退出 Codex 即可关闭本次桌面调试端口。更多说明见 [英文 README](README.md)。
+停止时分别在网关和专用 Serve 窗口按 Ctrl+C，再正常退出 Codex 以关闭调试监听。升级解压到新目录，回滚先停网关，再运行上一个已验证目录。先备份私有配置和回执，不要同时开两个网关或重发状态不明的消息。便携包附 Node 许可证和组件清单，不含 Codex、Tailscale 或用户数据。构建说明见 [英文 README](README.md)。
 
 ## 实机验收
 
@@ -35,7 +30,7 @@
 1. 在电脑测试会话里留一条无敏感内容的消息。手机应在会话列表里找到同一标题，打开后看到这条历史。
 2. 从手机发一条可识别的短消息。电脑应在同一会话收到且只收到一次；手机随后应能看到这条消息及回复。若页面提示回执不明确，先查桌面实际状态，不要直接重发。
 3. 仅在一次性测试目录和保留原审批策略的前提下，使用会自然产生审批的无害测试操作。手机应能看到待审请求，从手机拒绝后，桌面应显示本次请求已拒绝，手机待审项消失。无法触发审批时标记「未测」，不要改成跳过审批。
-4. 确认可访问入口仅是私有 Serve URL，且未代理调试端口。完成后按上节退出。
+4. 用非所有者 tailnet 身份验证拒绝，再断开手机 Tailscale 验证入口不可达。确认只代理网关，桌面调试端口仅监听电脑回环。停止网关时 Codex 应保留；停止本次前台 Serve 后手机应无法访问。
 
 自动检查可运行 `npm.cmd test`、`powershell.exe -NoProfile -File .\test\windows-launcher.ps1`。已安装 Playwright 及其浏览器时，可运行 `node test/browser-mobile.cjs` 和 `node test/browser-diagnostics.cjs`；也可设置 `PLAYWRIGHT_CHANNEL=msedge` 使用已安装的 Edge。这些检查使用合成数据，不代替实机验收。
 

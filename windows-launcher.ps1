@@ -55,7 +55,15 @@ function Get-CompanionDesktopStatus($Desktop, [int]$Port) {
     Get-CompanionDesktopDecision $Desktop $Port @(Get-CompanionDesktopProcess) @(Get-CompanionPortListener $Port)
 }
 
-function Enter-CompanionDesktop($Desktop, [int]$Port) {
+function Get-CompanionVerifiedDesktopPid($Desktop, [int]$Port) {
+    $processes = @(Get-CompanionDesktopProcess)
+    if ((Get-CompanionDesktopDecision $Desktop $Port $processes @(Get-CompanionPortListener $Port)) -ne 'ready') {
+        throw 'Codex did not own a verified local debug listener.'
+    }
+    [int]$processes[0].ProcessId
+}
+
+function Enter-CompanionDesktop($Desktop, [int]$Port, [switch]$AllowLaunch) {
     $mutex = [Threading.Mutex]::new($false, 'Local\CodexMobileCompanionDesktop')
     $held = $false
     try {
@@ -63,6 +71,7 @@ function Enter-CompanionDesktop($Desktop, [int]$Port) {
         if (-not $held) { throw 'Another companion is checking the desktop. Try again shortly.' }
         $state = Get-CompanionDesktopStatus $Desktop $Port
         if ($state -eq 'launch') {
+            if (-not $AllowLaunch) { throw 'Codex closed during startup. Run the launcher again to confirm a fresh start.' }
             $saved = @{}
             foreach ($entry in @(Get-ChildItem Env: | Where-Object { $_.Name -like 'CODEXL_*' -or $_.Name -eq 'CODEX_CLI_PATH' })) {
                 $saved[$entry.Name] = $entry.Value

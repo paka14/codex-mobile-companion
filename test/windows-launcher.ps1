@@ -47,7 +47,7 @@ function Start-Process($FilePath, $ArgumentList, $WindowStyle) {
 $script:decisions.Enqueue('launch')
 $script:decisions.Enqueue('starting')
 $script:decisions.Enqueue('ready')
-Enter-CompanionDesktop $desktop 9229
+Enter-CompanionDesktop $desktop 9229 -AllowLaunch
 Assert-Equal $script:starts 1
 $script:decisions.Enqueue('ready')
 Enter-CompanionDesktop $desktop 9229
@@ -58,6 +58,14 @@ try {
     throw 'Expected refusal.'
 } catch {
     if ($_.Exception.Message -notmatch '^Codex is already running') { throw }
+}
+Assert-Equal $script:starts 1
+$script:decisions.Enqueue('launch')
+try {
+    Enter-CompanionDesktop $desktop 9229
+    throw 'Expected refusal.'
+} catch {
+    if ($_.Exception.Message -notmatch '^Codex closed during startup') { throw }
 }
 Assert-Equal $script:starts 1
 'Windows launcher tests passed.'

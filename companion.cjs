@@ -2,18 +2,21 @@
 
 const { readFile } = require('node:fs/promises');
 const { dirname, isAbsolute, resolve } = require('node:path');
+const { execFile } = require('node:child_process');
+const { promisify } = require('node:util');
 const { createGateway } = require('./gateway.cjs');
 const { createDesktopAdapter } = require('./desktop-adapter.cjs');
 
 async function loadConfig(file) {
   const config = JSON.parse((await readFile(file, 'utf8')).replace(/^\uFEFF/, ''));
-  const { origin, ownerLogin, dataDirectory = 'data', port = 4317, desktopPort = 9229, automationDirectory } = config ?? {};
+  const { origin, ownerLogin, dataDirectory = 'data', port = 4317, desktopPort = 9229, automationDirectory, accessProfile } = config ?? {};
   const boundPort = value => Number.isInteger(value) && value >= 1024 && value <= 65535;
   const url = URL.canParse(origin) ? new URL(origin) : null;
   if (!url || url.protocol !== 'https:' || url.origin !== origin || url.port ||
-      typeof ownerLogin !== 'string' || !/^[\x21-\x7e]{1,254}$/.test(ownerLogin) ||
+      typeof ownerLogin !== 'string' || !/^[\x21-\x7e]{1,254}$/.test(ownerLogin) || ownerLogin.includes(',') ||
       typeof dataDirectory !== 'string' || !dataDirectory.trim() ||
-      !boundPort(port) || !boundPort(desktopPort) || port === desktopPort) {
+      !boundPort(port) || !boundPort(desktopPort) || port === desktopPort ||
+      (accessProfile !== undefined && !['continue', 'developer'].includes(accessProfile))) {
     throw Error('Invalid HTTPS origin, owner login, data directory or ports.');
   }
   if (automationDirectory !== undefined && (typeof automationDirectory !== 'string' || automationDirectory.includes('\0') ||
@@ -21,12 +24,13 @@ async function loadConfig(file) {
     throw Error('The automation directory must be an absolute local path.');
   }
   return { origin, ownerLogin, dataDirectory: resolve(dirname(file), dataDirectory), port, desktopPort,
-    ...(automationDirectory !== undefined && { automationDirectory }) };
+    ...(automationDirectory !== undefined && { automationDirectory }),
+    ...(accessProfile !== undefined && { accessProfile }) };
 }
 
-async function startCompanion(config, { makeDesktop = createDesktopAdapter } = {}) {
+async function startCompanion(config, { makeDesktop = createDesktopAdapter, verifyDesktop } = {}) {
   const { automationDirectory, ...gatewayConfig } = config;
-  const desktop = makeDesktop({ port: config.desktopPort, automationDirectory });
+  const desktop = makeDesktop({ port: config.desktopPort, automationDirectory, verifyDesktop });
   const gateway = createGateway({
     ...gatewayConfig, desktop,
     reportError() { console.error('A companion request failed. Check the Codex desktop connection.'); },
@@ -37,26 +41,69 @@ async function startCompanion(config, { makeDesktop = createDesktopAdapter } = {
   let closing;
   return {
     address,
+    health: desktop.health,
     close: () => closing ??= gateway.close().finally(() => desktop.stop()),
   };
 }
 
 async function main(args) {
   const check = args[0] === '--check-config';
-  if (args.length !== (check ? 2 : 1)) throw Error('Usage: node companion.cjs [--check-config] <configuration.json>');
+  const supervised = args[0] === '--supervised';
+  if (args.length !== (check ? 2 : supervised ? 3 : 1)) throw Error('Usage: node companion.cjs [--check-config] <configuration.json>');
   if (Number(process.versions.node.split('.')[0]) < 24) throw Error('Node.js 24 or later is required.');
   let config;
-  try { config = await loadConfig(resolve(args[check ? 1 : 0])); }
+  try { config = await loadConfig(resolve(args.at(-1))); }
   catch { throw Error('Could not read configuration. Check the JSON file and the documented settings.'); }
   if (check) {
-    console.log(JSON.stringify({ port: config.port, desktopPort: config.desktopPort }));
+    console.log(JSON.stringify({ port: config.port, desktopPort: config.desktopPort, origin: config.origin }));
     return;
   }
-  const companion = await startCompanion(config);
-  console.log('Codex Mobile Companion listening on 127.0.0.1:' + companion.address.port);
-  const stop = () => void companion.close().catch(() => { process.exitCode = 1; });
+  let verifyDesktop;
+  if (supervised) {
+    if (process.platform !== 'win32' || !/^[1-9]\d{0,9}$/.test(args[1])) throw Error('Invalid Windows desktop guard.');
+    const powershell = resolve(process.env.SystemRoot, 'System32/WindowsPowerShell/v1.0/powershell.exe');
+    verifyDesktop = () => promisify(execFile)(powershell, [
+      '-NoLogo', '-NoProfile', '-NonInteractive', '-File', resolve(__dirname, 'Confirm-CompanionDesktop.ps1'),
+      '-Port', String(config.desktopPort), '-DesktopProcessId', args[1],
+    ], { windowsHide: true, timeout: 4000 }).then(() => true, () => false);
+    if (!await verifyDesktop()) throw Error('Codex listener ownership changed before gateway startup.');
+  }
+  let stopped = false, companion, timer;
+  const stop = () => {
+    stopped = true;
+    clearTimeout(timer);
+    process.stdin.pause();
+    if (companion) void companion.close().catch(() => { process.exitCode = 1; });
+  };
   process.once('SIGINT', stop);
   process.once('SIGTERM', stop);
+  if (supervised) {
+    process.stdin.on('end', stop);
+    process.stdin.on('error', stop);
+    process.stdin.resume();
+  }
+  try { companion = await startCompanion(config, { verifyDesktop }); }
+  catch (error) { stop(); throw error; }
+  if (stopped) { stop(); return; }
+  console.log('[GATEWAY:BOUND] Listening only on 127.0.0.1:' + companion.address.port);
+  if (!supervised) return;
+  let last;
+  const observe = async () => {
+    let health;
+    try { health = await companion.health(); } catch {}
+    if (stopped) return;
+    const code = health?.ready === true ? 'READY' :
+      health?.code === 'DESKTOP_RESTART_REQUIRED' ? 'INCOMPATIBLE' : 'WAITING';
+    if (code !== last) {
+      console.log('[BRIDGE:' + code + '] ' + (code === 'READY'
+        ? 'On your Tailscale-connected phone, open ' + config.origin + '/mobile'
+        : code === 'INCOMPATIBLE' ? 'This Codex build has not passed the bridge capability check.'
+          : 'Waiting for the Codex bridge. Check the desktop window if this persists.'));
+      last = code;
+    }
+    timer = setTimeout(observe, 2500);
+  };
+  void observe();
 }
 
 if (require.main === module) main(process.argv.slice(2)).catch(error => {
