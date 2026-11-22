@@ -1,0 +1,14 @@
+/app/
+/data/
+/node_modules/
+/source/
+/web/
+/dist/
+/.env*
+*.log
+*.bak*
+*.exe
+*.apk
+*.url
+*.pem
+*.key
