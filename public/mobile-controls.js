@@ -287,6 +287,7 @@ $('goalClear').onclick=()=>clearGoal(goalThread);
 
 function mobileSlashActions(){
  const thread=selected;
+ if(continuationOnly)return [['goal','查看当前会话目标',openGoal]];
  return [
   ['goal','查看或管理当前会话目标',openGoal],
   ['model','选择模型和推理强度',()=>$('modelButton').click()],
@@ -538,12 +539,12 @@ function makeThreadRow(t){
  const more=button('⋯',()=>{const show=menu.hidden;closeThreadMenus();menu.hidden=!show;more.setAttribute('aria-expanded',String(show))});more.className='thread-more';more.setAttribute('aria-label','更多选项：'+title.textContent);more.setAttribute('aria-haspopup','menu');more.setAttribute('aria-expanded','false');
  const menu=document.createElement('div');menu.className='thread-menu';menu.hidden=true;menu.setAttribute('role','menu');
  const action=(label,fn)=>{const b=button(label,async()=>{closeThreadMenus();b.disabled=true;try{await fn()}finally{b.disabled=false}});b.setAttribute('role','menuitem');menu.append(b);return b};
- action('重命名',()=>openThreadRename(t));
+ if(!continuationOnly)action('重命名',()=>openThreadRename(t));
  action('标记为已读',()=>setThreadUnread(t.id,false));
  action('标记为未读',()=>setThreadUnread(t.id,true));
  action('复制会话链接',()=>{const url=new URL(location.href);url.searchParams.delete('token');url.searchParams.set('thread',t.id);return navigator.clipboard.writeText(url.href)});
  if(t.cwd)action('复制工作目录',()=>navigator.clipboard.writeText(t.cwd));
- action('归档',async()=>{await desktopRpc('thread/archive',{threadId:t.id});threadRows=threadRows.filter(x=>x.id!==t.id);desktopThreadRows.delete(t.id);threadCache.delete(t.id);liveActivity.delete(t.id);unreadThreadIds.delete(t.id);renderList();refreshThreadIndicators()});
+ if(!continuationOnly)action('归档',async()=>{await desktopRpc('thread/archive',{threadId:t.id});threadRows=threadRows.filter(x=>x.id!==t.id);desktopThreadRows.delete(t.id);threadCache.delete(t.id);liveActivity.delete(t.id);unreadThreadIds.delete(t.id);renderList();refreshThreadIndicators()});
  row.append(open,more,menu);
  queueMicrotask(refreshThreadIndicators);return row;
 }

@@ -15,7 +15,7 @@ const stale = () => Object.assign(Error('此审批已处理或连接已变更。
 const goalStates = new Set(['active', 'paused', 'complete', 'blocked', 'stalled', 'budgetLimited', 'usageLimited']);
 const validGoalText = value => typeof value === 'string' && Boolean(value.trim()) && [...value].length <= 4000;
 
-function createDesktopAdapter({ Bridge = DesktopBridge, port, automationDirectory } = {}) {
+function createDesktopAdapter({ Bridge = DesktopBridge, port, automationDirectory, verifyDesktop } = {}) {
   const subscribers = new Set(), approvals = new Map(), resolved = new Set(), responding = new Set();
   const unreadIds = new Set();
   const goalWrites = new Set();
@@ -43,7 +43,7 @@ function createDesktopAdapter({ Bridge = DesktopBridge, port, automationDirector
       }
       changed();
     },
-    { port, onActivity: value => { if (!value.hostId || value.hostId === 'local') emit(value); } },
+    { port, verifyDesktop, onActivity: value => { if (!value.hostId || value.hostId === 'local') emit(value); } },
   );
   const requireReady = () => { if (!bridge.ready) throw unavailable(); };
   const offline = { ready: false, code: 'DESKTOP_UNAVAILABLE', message: '请在电脑上启动支持手机连接的 Codex 后重试。' };

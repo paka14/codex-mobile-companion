@@ -72,14 +72,14 @@ test('reads an explicit config and never uses its origin as a bind address', asy
   }
 });
 
-test('public entry serves desktop-backed history, send receipts and approval lifecycle', async t => {
+async function checkDesktopOperations(t, accessProfile) {
   const directory = await mkdtemp(join(await realpath(tmpdir()), 'companion-app-'));
   const fake = mockDesktop();
   const automationDirectory = join(directory, 'automations');
   await mkdir(join(automationDirectory, 'fixture'), { recursive: true });
   await writeFile(join(automationDirectory, 'fixture', 'automation.toml'),
     'kind = "heartbeat"\ntarget_thread_id = "' + threadId + '"\nstatus = "ACTIVE"\nprompt = "fixture not returned"\n');
-  const app = await startCompanion({ origin, ownerLogin, dataDirectory: directory, automationDirectory, port: 0, desktopPort: 9262 }, {
+  const app = await startCompanion({ origin, ownerLogin, dataDirectory: directory, automationDirectory, accessProfile, port: 0, desktopPort: 9262 }, {
     makeDesktop: options => createDesktopAdapter({ ...options, Bridge: fake.Bridge }),
   });
   t.after(async () => {
@@ -115,13 +115,24 @@ test('public entry serves desktop-backed history, send receipts and approval lif
   assert.equal((await request('/mobile-api/thread-state', undefined, 'untrusted@example.test')).status, 403);
   assert.deepEqual((await request('/mobile-api/thread-state')).body.threadAutomations, { [threadId]: { active: 1, paused: 0 } });
   const setGoal = params => rpc('thread/goal/set', { threadId, ...params });
-  assert.equal((await setGoal({ objective: 'Original objective' })).body.goal.objective, 'Original objective');
-  assert.equal((await setGoal({ objective: 'Edited objective', previousObjective: 'Original objective' })).status, 400);
-  assert.equal((await setGoal({ objective: 'Edited objective', previousObjective: 'Stale objective', previousStatus: 'active' })).status, 409);
-  assert.equal((await setGoal({ objective: 'Edited objective', previousObjective: 'Original objective', previousStatus: 'active' })).body.goal.objective, 'Edited objective');
-  assert.equal((await setGoal({ status: 'paused' })).body.goal.status, 'paused');
-  assert.equal((await rpc('thread/goal/get', { threadId })).body.goal.status, 'paused');
-  assert.equal((await rpc('thread/goal/clear', { threadId })).body.cleared, true);
+  if (accessProfile === 'continue') {
+    assert.equal((await setGoal({ objective: 'Forbidden' })).status, 403);
+    for (const method of ['thread/goal/clear', 'thread/settings/update', 'thread/name/set', 'thread/archive', 'thread/fork']) {
+      assert.equal((await rpc(method, { threadId })).status, 403);
+    }
+    assert.equal((await request('/mobile-api/operations', { id: randomUUID(), kind: 'create', params: {} })).status, 403);
+    assert.equal((await request('/mobile-api/upload', {})).status, 403);
+    assert.equal((await rpc('thread/goal/get', { threadId })).status, 200);
+    assert.equal(fake.bridge.goal, undefined);
+  } else {
+    assert.equal((await setGoal({ objective: 'Original objective' })).body.goal.objective, 'Original objective');
+    assert.equal((await setGoal({ objective: 'Edited objective', previousObjective: 'Original objective' })).status, 400);
+    assert.equal((await setGoal({ objective: 'Edited objective', previousObjective: 'Stale objective', previousStatus: 'active' })).status, 409);
+    assert.equal((await setGoal({ objective: 'Edited objective', previousObjective: 'Original objective', previousStatus: 'active' })).body.goal.objective, 'Edited objective');
+    assert.equal((await setGoal({ status: 'paused' })).body.goal.status, 'paused');
+    assert.equal((await rpc('thread/goal/get', { threadId })).body.goal.status, 'paused');
+    assert.equal((await rpc('thread/goal/clear', { threadId })).body.cleared, true);
+  }
   assert.equal((await request('/mobile-api/workspaces')).body.projects[0].name, 'Fixture');
   const { body: snapshot } = await rpc('phone/thread/snapshot', { threadId });
   assert.equal(snapshot.thread.turns[0].items[0].text, 'Desktop history');
@@ -147,7 +158,9 @@ test('public entry serves desktop-backed history, send receipts and approval lif
   assert.deepEqual((await request(path)).body, { desktopConnected: false, requests: [] });
   fake.bridge.start();
   assert.notEqual((await request(path)).body.requests[0].id, mobileApproval.id);
-});
+}
+test('public entry serves legacy desktop-backed operations', t => checkDesktopOperations(t));
+test('continuation profile allows history, sends and approvals without expanded permissions', t => checkDesktopOperations(t, 'continue'));
 
 test('rejects a stale approval when the native snapshot changes during lookup', async () => {
   const fake = mockDesktop();

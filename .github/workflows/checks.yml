@@ -24,4 +24,17 @@ jobs:
       - name: Check Windows launcher
         if: runner.os == 'Windows'
         shell: powershell
-        run: .\test\windows-launcher.ps1
+        run: |
+          .\test\windows-launcher.ps1
+          .\test\windows-preflight.ps1
+      - name: Build and smoke-test Windows portable ZIP
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $pin = Get-Content packaging/node-win-x64.json -Raw | ConvertFrom-Json
+          $node = Join-Path $env:RUNNER_TEMP $pin.archive
+          Invoke-WebRequest -UseBasicParsing -Uri "https://nodejs.org/dist/$($pin.version)/$($pin.archive)" -OutFile $node
+          $out = Join-Path $env:RUNNER_TEMP 'companion-portable'
+          .\Build-WindowsPortable.ps1 -NodeArchive $node -OutputDirectory $out -Version '0.0.0-ci'
+          .\test\windows-portable.ps1 -Archive (Join-Path $out 'codex-mobile-companion-0.0.0-ci-win-x64.zip')

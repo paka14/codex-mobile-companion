@@ -21,9 +21,9 @@ function desktopEndpoint(pages, port, host = '127.0.0.1') {
 }
 
 class DesktopTransport {
-  constructor({ port = 9229, fetcher = globalThis.fetch, Socket = globalThis.WebSocket, retryMs = 5000 } = {}) {
+  constructor({ port = 9229, fetcher = globalThis.fetch, Socket = globalThis.WebSocket, retryMs = 5000, verifyDesktop = async () => true } = {}) {
     if (!Number.isInteger(port) || port < 1024 || port > 65535) throw Error('Invalid desktop port');
-    Object.assign(this, {port, fetcher, Socket, retryMs});
+    Object.assign(this, {port, fetcher, Socket, retryMs, verifyDesktop});
     this.ready = false;
     this.running = false;
     this.generation = 0;
@@ -55,6 +55,7 @@ class DesktopTransport {
     try {
       let endpoint;
       for (const host of ['127.0.0.1', '[::1]']) {
+        if (!await this.verifyDesktop()) throw Error('Desktop listener could not be verified');
         if (generation !== this.generation) return;
         try {
           const response = await this.fetcher('http://' + host + ':' + this.port + '/json/list', {
@@ -64,8 +65,9 @@ class DesktopTransport {
         } catch {}
         if (endpoint) break;
       }
-      if (generation !== this.generation) return;
       if (!endpoint) throw Error('No unique local Codex renderer');
+      if (!await this.verifyDesktop()) throw Error('Desktop listener changed');
+      if (generation !== this.generation) return;
       const socket = this.socket = new this.Socket(endpoint);
       this.openTimer = setTimeout(() => this.disconnect(socket), 2000);
       socket.onmessage = event => {
@@ -87,6 +89,8 @@ class DesktopTransport {
         if (socket !== this.socket) return;
         clearTimeout(this.openTimer);
         try {
+          if (!await this.verifyDesktop()) throw Error('Desktop listener changed');
+          if (socket !== this.socket) return;
           await this.initialize();
           if (socket !== this.socket) return;
           this.ready = true;
