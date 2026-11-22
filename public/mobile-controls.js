@@ -97,10 +97,46 @@ slashPrompt.after(slashCommands);
 slashPrompt.setAttribute('aria-controls',slashCommands.id);
 let slashIndex=-1,slashComposing=false;
 
-let goalThread=null,goalBusy=false,goalBarThread=null,goalBarRead=null;
+let goalThread=null,goalBusy=false,goalBarThread=null,goalBarRead=null,goalEditing=null,dialogGoal=null;
 const goalLabels={active:'进行中',paused:'已暂停',complete:'已完成',blocked:'遇到阻塞',stalled:'进度停滞',budgetLimited:'已达预算上限',usageLimited:'已达用量上限'};
+const goalStrip=document.createElement('div'),goalRow=document.createElement('div'),goalQuickActions=document.createElement('div'),goalQuickMessage=document.createElement('p');
 const goalBar=document.createElement('button'),goalBarLabel=document.createElement('span'),goalBarText=document.createElement('span');
-const svgNs='http://www.w3.org/2000/svg',goalBarIcon=document.createElementNS(svgNs,'svg');
+const svgNs='http://www.w3.org/2000/svg';
+const goalIcons={
+ edit:'M4 20l1-5L16 4l4 4L9 19z M14 6l4 4',
+ pause:'M6 4h4v16H6z M14 4h4v16h-4z',
+ play:'M6 3l14 9-14 9z',
+ clear:'M4 6h16 M9 6V3h6v3 M6 6l1 15h10l1-15 M10 10v7 M14 10v7'
+};
+goalStrip.id='goalStrip';
+goalStrip.hidden=true;
+goalRow.id='goalRow';
+goalQuickActions.id='goalQuickActions';
+goalQuickActions.setAttribute('role','group');
+goalQuickActions.setAttribute('aria-label','目标操作');
+goalQuickMessage.id='goalQuickMessage';
+goalQuickMessage.setAttribute('role','status');
+goalQuickMessage.hidden=true;
+function goalQuickButton(id,label,icon,action){
+ const button=document.createElement('button');
+ const svg=document.createElementNS(svgNs,'svg'),path=document.createElementNS(svgNs,'path');
+ svg.setAttribute('viewBox','0 0 24 24');
+ svg.setAttribute('aria-hidden','true');
+ path.setAttribute('d',goalIcons[icon]);
+ svg.append(path);
+ button.id=id;
+ button.type='button';
+ button.append(svg);
+ button.title=label+'目标';
+ button.setAttribute('aria-label',button.title);
+ button.onclick=action;
+ goalQuickActions.append(button);
+ return button;
+}
+const goalQuickClear=goalQuickButton('goalQuickClear','清除','clear',()=>clearGoal(goalBarThread));
+const goalQuickToggle=goalQuickButton('goalQuickToggle','暂停','pause',()=>toggleGoal(goalBarThread,goalQuickToggle));
+const goalQuickEdit=goalQuickButton('goalQuickEdit','编辑','edit',()=>openGoal(true));
+const goalBarIcon=document.createElementNS(svgNs,'svg');
 goalBarIcon.setAttribute('class','goal-bar-icon');
 goalBarIcon.setAttribute('viewBox','0 0 24 24');
 goalBarIcon.setAttribute('aria-hidden','true');
@@ -113,29 +149,46 @@ for(const radius of [10,6,2]){
 }
 goalBar.id='goalBar';
 goalBar.type='button';
-goalBar.hidden=true;
 goalBar.setAttribute('aria-haspopup','dialog');
 goalBar.setAttribute('aria-controls','goalDialog');
 goalBarLabel.className='goal-bar-label';
 goalBarText.className='goal-bar-text';
 goalBar.append(goalBarIcon,goalBarLabel,goalBarText);
-$('form').prepend(goalBar);
+goalRow.append(goalBar,goalQuickActions);
+goalStrip.append(goalRow,goalQuickMessage);
+$('form').prepend(goalStrip);
 goalBar.onclick=()=>openGoal();
 
+function renderGoalToggle(button,goal,compact=false){
+ const active=goal?.status==='active',label=active?'暂停':'继续';
+ button.hidden=!active&&!['paused','blocked','usageLimited'].includes(goal?.status);
+ if(compact)button.querySelector('path').setAttribute('d',goalIcons[active?'pause':'play']);
+ else button.textContent=label+'目标';
+ button.title=label+'目标';
+ button.setAttribute('aria-label',button.title);
+ button.dataset.status=active?'paused':'active';
+}
+function showGoalQuickMessage(message){
+ goalQuickMessage.textContent=message;
+ goalQuickMessage.hidden=!message;
+}
 function renderGoalBar(id,goal){
  if(goalBarThread!==id)return;
- goalBar.hidden=!goal?.objective;
+ goalStrip.hidden=!goal?.objective&&goalQuickMessage.hidden;
+ goalRow.hidden=!goal?.objective;
  const status=goal?(goalLabels[goal.status]||'已设定'):'',objective=goal?.objective||'';
  goalBar.dataset.status=goal?.status||'';
  goalBarLabel.textContent=status;
  goalBarText.textContent=objective;
  goalBar.title=objective;
  goalBar.setAttribute('aria-label',objective?`会话目标，${status}：${objective}`:'会话目标');
+ renderGoalToggle(goalQuickToggle,goal,true);
 }
 function selectGoalBarThread(id){
  if(id!==goalBarThread){
   goalBarThread=id;
   goalBarRead=null;
+  showGoalQuickMessage('');
   renderGoalBar(id,null);
  }
  refreshGoalBar();
@@ -153,59 +206,64 @@ async function refreshGoalBar(){
 setInterval(refreshGoalBar,5000);
 document.addEventListener('visibilitychange',refreshGoalBar);
 
-function renderGoal(goal){
+function renderGoal(goal,edit=false){
+ dialogGoal=goal;
+ goalEditing=edit&&goal?goal:null;
+ const editing=!!goalEditing;
  $('goalState').textContent=goal?(goalLabels[goal.status]||'目标已设定'):'暂无目标';
  $('goalObjective').textContent=goal?.objective||'';
- $('goalObjective').hidden=!goal;
- $('goalForm').hidden=!!goal;
- $('goalActions').hidden=!goal;
- const toggle=$('goalStatus');
- toggle.hidden=!['active','paused'].includes(goal?.status);
- toggle.textContent=goal?.status==='active'?'暂停目标':'继续目标';
- toggle.dataset.status=goal?.status==='active'?'paused':'active';
+ $('goalObjective').hidden=!goal||editing;
+ $('goalForm').hidden=!!goal&&!editing;
+ $('goalActions').hidden=!goal||editing;
+ $('goalCreate').textContent=editing?(goal.status==='active'?'保存目标':'保存并设为进行中'):'设定目标';
+ if(editing)$('goalInput').value=goal.objective;
+ renderGoalToggle($('goalStatus'),goal);
 }
 function setGoalBusy(busy){
  goalBusy=busy;
  if(busy)goalBarRead=null;
- for(const id of ['goalInput','goalCreate','goalStatus','goalClear','goalClose'])$(id).disabled=busy;
+ for(const control of [goalBar,goalQuickEdit,goalQuickToggle,goalQuickClear,...['goalInput','goalCreate','goalEdit','goalStatus','goalClear','goalClose'].map($)])control.disabled=busy;
 }
-async function openGoal(){
+async function openGoal(edit=false){
  if(!selected||goalBusy||$('goalDialog').open)return;
  if(goalThread!==selected.id)$('goalInput').value='';
  goalThread=selected.id;
+ goalEditing=dialogGoal=null;
  $('goalObjective').hidden=$('goalForm').hidden=$('goalActions').hidden=true;
  $('goalState').textContent='正在读取目标…';
  $('goalDialog').showModal();
  setGoalBusy(true);
  try{
   const {goal}=await desktopRpc('thread/goal/get',{threadId:goalThread});
-  renderGoal(goal);
+  renderGoal(goal,edit===true);
   renderGoalBar(goalThread,goal);
  }
  catch(e){$('goalState').textContent=e.message||String(e)}
- finally{setGoalBusy(false)}
+ finally{setGoalBusy(false);if(goalEditing)$('goalInput').focus()}
 }
-async function changeGoal(method,params){
- if(goalBusy||selected?.id!==goalThread||!$('goalDialog').open)return;
+async function changeGoal(id,method,params){
+ if(!id||goalBusy||selected?.id!==id)return;
+ const inDialog=$('goalDialog').open&&goalThread===id;
  setGoalBusy(true);
- $('goalState').textContent='正在更新目标…';
+ if(inDialog)$('goalState').textContent='正在更新目标…';
+ else showGoalQuickMessage('正在更新目标…');
  try{
-  const result=await desktopRpc(method,{threadId:goalThread,...params});
-  if(method==='thread/goal/clear'){
-   if(typeof result?.cleared!=='boolean')throw Error('桌面未确认目标已清除');
-   renderGoal(null);
-   renderGoalBar(goalThread,null);
-  }else{
-   if(!result?.goal)throw Error('桌面未返回更新后的目标');
-   renderGoal(result.goal);
-   renderGoalBar(goalThread,result.goal);
-  }
-  $('goalInput').value='';
+  const result=await desktopRpc(method,{threadId:id,...params});
+  const clearing=method==='thread/goal/clear';
+  if(clearing&&typeof result?.cleared!=='boolean')throw Error('桌面未确认目标已清除');
+  if(!clearing&&!result?.goal)throw Error('桌面未返回更新后的目标');
+  const goal=clearing?null:result.goal;
+  if(inDialog){renderGoal(goal);$('goalInput').value=''}
+  if(goalBarThread===id)showGoalQuickMessage('');
+  renderGoalBar(id,goal);
  }catch(e){
-  $('goalForm').hidden=$('goalActions').hidden=true;
-  $('goalState').textContent=(e.message||String(e))+'。请重新打开面板核对目标状态。';
+  const message=(e.message||String(e))+'。请核对目标状态。';
+  if(inDialog){
+   $('goalForm').hidden=$('goalActions').hidden=true;
+   $('goalState').textContent=message;
+  }else if(goalBarThread===id)showGoalQuickMessage(message);
  }
- finally{setGoalBusy(false)}
+ finally{setGoalBusy(false);if(goalBarThread!==id||!goalQuickMessage.hidden)refreshGoalBar()}
 }
 $('goalClose').onclick=()=>$('goalDialog').close();
 $('goalDialog').addEventListener('cancel',e=>{if(goalBusy)e.preventDefault()});
@@ -213,10 +271,19 @@ $('goalForm').onsubmit=e=>{
  e.preventDefault();
  const objective=$('goalInput').value.trim();
  if([...objective].length>4000){$('goalState').textContent='目标不能超过 4000 字';return}
- if(objective)changeGoal('thread/goal/set',{objective});
+ if(objective&&objective!==goalEditing?.objective)changeGoal(goalThread,'thread/goal/set',
+  goalEditing?{objective,previousObjective:goalEditing.objective,previousStatus:goalEditing.status}:{objective});
 };
-$('goalStatus').onclick=()=>changeGoal('thread/goal/set',{status:$('goalStatus').dataset.status});
-$('goalClear').onclick=()=>{if(window.confirm('清除当前会话的目标？'))changeGoal('thread/goal/clear',{})};
+function toggleGoal(id,button){return changeGoal(id,'thread/goal/set',{status:button.dataset.status})}
+function clearGoal(id){
+ if(id&&selected?.id===id&&!goalBusy&&window.confirm('清除当前会话的目标？'))return changeGoal(id,'thread/goal/clear',{});
+}
+$('goalEdit').onclick=()=>{
+ renderGoal(dialogGoal,true);
+ $('goalInput').focus();
+};
+$('goalStatus').onclick=()=>toggleGoal(goalThread,$('goalStatus'));
+$('goalClear').onclick=()=>clearGoal(goalThread);
 
 function mobileSlashActions(){
  const thread=selected;
@@ -302,10 +369,17 @@ const desktopThreadRows=new Map();
 let desktopThreadStates=new Map(),unreadThreadIds=new Set(),threadStateReading=false,renameThreadId=null;
 function listedThread(id){const recent=threadRows.find(t=>t.id===id),desktop=desktopThreadRows.get(id);return recent||desktop}
 async function listThreads(params){return desktopRpc('thread/list',params)}
+function normalizeThreadStatus(status){return typeof status==='string'?{type:status}:status}
 function threadRowStatus(t){
- const cached=threadCache.get(t.id),live=liveActivity.get(t.id),status=desktopThreadStates.get(t.id)||live?.status||t.status||cached?.status;
- if([...pendingApprovals.values()].some(e=>e.request.params?.threadId===t.id)||(status?.activeFlags||[]).some(f=>/waiting/i.test(f)))return 'waiting';
+ const cached=threadCache.get(t.id),live=liveActivity.get(t.id),status=desktopThreadStates.get(t.id)||live?.status||normalizeThreadStatus(t.status)||cached?.status;
+ const flags=status?.type==='active'?(status.activeFlags??[live?.status,normalizeThreadStatus(t.status),cached?.status].find(s=>s?.type==='active'&&Array.isArray(s.activeFlags))?.activeFlags??[]):[];
+ const requests=[...pendingApprovals.values()].map(e=>e.request).filter(r=>r.params?.threadId===t.id).map(requestAttentionKind);
+ if(flags.includes('waitingOnApproval')||requests.includes('waiting'))return 'waiting';
+ if(flags.includes('waitingOnUserInput')||requests.includes('input'))return 'input';
+ if(requests.length||flags.some(f=>/waiting/i.test(f)))return 'attention';
+ if(status?.type==='systemError')return 'error';
  if(status?.type==='active'||!desktopThreadStates.has(t.id)&&(live?.running===true||live?.running!==false&&cached?.turns?.at(-1)?.status==='inProgress'))return 'running';
+ if(status?.type!=='notLoaded'&&(live?.turnStatus??cached?.turns?.at(-1)?.status)==='failed')return 'error';
  return unreadThreadIds.has(t.id)?'unread':'idle';
 }
 let threadAutomations={};
@@ -317,7 +391,7 @@ function renderAutomationIcon(icon,id){
 function refreshThreadIndicators(){
  for(const row of document.querySelectorAll('.thread-row')){
   const t=listedThread(row.dataset.threadId);if(!t)continue;
-  const status=threadRowStatus(t),node=row.querySelector('.thread-status'),label={waiting:'待审批',running:'运行中',unread:'未读',idle:'已读'}[status];
+  const status=threadRowStatus(t),node=row.querySelector('.thread-status'),label={waiting:'待审批',input:'待回答',attention:'待确认',error:'会话出错',running:'运行中',unread:'未读',idle:'已读'}[status];
   node.dataset.status=status;node.setAttribute('aria-label',label);node.title=label;
   renderAutomationIcon(row.querySelector('.thread-automation'),t.id);
  }
@@ -474,7 +548,16 @@ function makeThreadRow(t){
  queueMicrotask(refreshThreadIndicators);return row;
 }
 function applyDesktopState(state){
- if(state.threads){desktopThreadRows.clear();for(const t of state.threads){const seconds=value=>Number(value)>1e11?Number(value)/1000:Number(value)||0;desktopThreadRows.set(t.id,{...t,name:t.title||t.name,updatedAt:seconds(t.updatedAt),recencyAt:seconds(t.recencyAt??t.updatedAt),status:{type:t.status}})}desktopThreadStates=new Map(state.threads.map(t=>[t.id,{type:t.status}]))}
+ if(Array.isArray(state.threads)){
+  desktopThreadRows.clear();
+  desktopThreadStates.clear();
+  for(const t of state.threads){
+   const seconds=value=>Number(value)>1e11?Number(value)/1000:Number(value)||0;
+   const status=normalizeThreadStatus(t.status);
+   desktopThreadRows.set(t.id,{...t,name:t.title||t.name,updatedAt:seconds(t.updatedAt),recencyAt:seconds(t.recencyAt??t.updatedAt),status});
+   if(status)desktopThreadStates.set(t.id,status);
+  }
+ }
  unreadThreadIds=new Set(state.unreadIds||[]);
  threadAutomations=state.threadAutomations||{};
 }

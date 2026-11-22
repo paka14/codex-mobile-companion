@@ -104,14 +104,21 @@ html[data-keyboard-open=true] .composer{padding-bottom:6px}.composer textarea{di
 #slashCommands button[data-current=true],#slashCommands button:focus-visible{background:var(--theme-button,#263449)}
 #slashCommands strong{font:600 13px ui-monospace,monospace;overflow-wrap:anywhere}
 #slashCommands span{color:var(--theme-muted,#a7b9cf);font-size:12px;overflow-wrap:anywhere}
-#goalBar{display:flex;align-items:center;gap:8px;width:100%;min-height:36px;margin:0 0 6px;padding:5px 8px;border-radius:7px;text-align:left;background:var(--theme-surface,#19232e);font-size:12px}
+#goalStrip{margin:0 0 6px}
+#goalRow{display:flex;align-items:center;border:1px solid var(--theme-line,#303b4b);border-radius:7px;background:var(--theme-surface,#19232e)}
+#goalBar{display:flex;align-items:center;gap:5px;flex:1;min-width:0;min-height:44px;padding:5px 8px;border:0;border-radius:6px;text-align:left;background:transparent;font-size:12px}
+#goalQuickActions{display:flex;flex:none}
+#goalQuickActions button{display:grid;place-items:center;width:44px;height:44px;padding:0;border:0;border-radius:6px;background:transparent;color:var(--theme-muted,#a7b9cf)}
+#goalQuickActions button:is(:focus-visible,:active){background:var(--theme-button,#263449);color:var(--theme-text,#eef2f8)}
+@media(hover:hover){#goalQuickActions button:not(:disabled):hover{background:var(--theme-button,#263449);color:var(--theme-text,#eef2f8)}}
+#goalQuickActions svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
+#goalQuickMessage{margin:4px 0 0;color:var(--theme-muted,#a7b9cf);font-size:12px;overflow-wrap:anywhere}
 #goalBar :is(.goal-bar-icon,.goal-bar-label){flex:none;color:var(--theme-muted,#a7b9cf)}
 #goalBar .goal-bar-icon{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2}
 #goalBar .goal-bar-label{padding:2px 5px;border-radius:4px;font-size:11px;font-weight:600}
 #goalBar[data-status=active] :is(.goal-bar-icon,.goal-bar-label){color:var(--theme-good,#91dfc6)}
 #goalBar[data-status=active] .goal-bar-label{background:color-mix(in srgb,currentColor 15%,transparent)}
 #goalBar .goal-bar-text{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#goalBar::after{content:'›';color:var(--theme-muted,#a7b9cf);flex:none;font-size:17px;line-height:1}
 #goalDialog{width:min(94vw,460px);max-height:min(80dvh,calc(var(--visible-height,100dvh) - 24px));border-radius:8px;overflow:auto}
 #goalDialog .toolbar{align-items:center;margin:0}#goalTitle{flex:1}#goalClose{padding:2px 9px;background:none;border:0;font-size:23px}
 #goalState{font-size:13px;color:var(--theme-muted,#a7b9cf);overflow-wrap:anywhere}#goalObjective{white-space:pre-wrap;overflow-wrap:anywhere;max-height:32dvh;overflow:auto}
@@ -122,8 +129,10 @@ html[data-keyboard-open=true] .composer{padding-bottom:6px}.composer textarea{di
 #threads>.thread-row>.thread,.workspace .thread-row>.thread{flex:1;min-width:0;width:auto;border:0;background:transparent;margin:0;padding:11px 12px}
 .thread-content{flex:1;min-width:0}.thread-row>.thread{display:flex;align-items:center;gap:9px}
 .thread-status{width:14px;height:14px;flex:none;display:flex;align-items:center;justify-content:center}
-.thread-status[data-status=unread]::before,.thread-status[data-status=waiting]::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--theme-good,#60d69a)}
-.thread-status[data-status=waiting]::before{background:var(--theme-note,#e9c15d)}
+.thread-status[data-status=unread]::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--theme-good,#60d69a)}
+.thread-status[data-status=waiting]::before,.thread-status[data-status=attention]::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--theme-note,#e9c15d)}
+.thread-status[data-status=error]::before,.thread-status[data-status=input]::before{content:'!';display:grid;place-items:center;width:13px;height:13px;border:1.5px solid currentColor;border-radius:50%;color:var(--theme-danger,#ff929e);font-size:10px;font-weight:700;line-height:1}
+.thread-status[data-status=input]::before{content:'?';color:var(--theme-note,#e9c15d)}
 .thread-automation{display:block;width:16px;height:16px;flex:none;color:var(--theme-muted,#a5b5c9)}
 .thread-automation svg{display:block;width:100%;height:100%}
 .thread-status[data-status=running]::before{content:'';width:12px;height:12px;border:2px solid var(--theme-edge,#6c8193);border-top-color:var(--theme-text,#e7f0f5);border-radius:50%;animation:threadSpin .9s linear infinite}
@@ -356,7 +365,27 @@ function userMessageText(item,threadId){if(item.type==='userMessage'||item.type=
 function contentText(item,threadId){const userText=userMessageText(item,threadId);if(userText!==null)return userText;if(item.type==='agentMessage')return item.text||item.questions?.map(q=>q.title).join('\n')||'';if(item.type==='commandExecution')return '$ '+(item.command||'')+'\n'+(item.aggregatedOutput||item.status||'');if(item.type==='fileChange')return '文件变更\n'+(item.changes||[]).map(c=>c.path).join('\n');if(item.type==='mcpToolCall')return '工具：'+item.server+' / '+item.tool+' · '+item.status;return ''}
 function reconcileThreadActivity(t){const latest=t.turns?.at(-1),status=t.status?.type;if(!['active','idle'].includes(status))return;const item=latest?.items?.findLast(i=>['commandExecution','fileChange','mcpToolCall','agentMessage'].includes(i.type));const executing=item&&['inProgress','running'].includes(item.status);const label=executing?(item.type==='commandExecution'?'正在执行命令…':item.type==='fileChange'?'正在修改文件…':'正在调用工具…'):'正在思考中…';liveActivity.set(t.id,{running:status==='active',turnId:latest?.id,label,status:t.status});}
 function updateActivity(t=selected){if(!t){$('activity').hidden=true;return}const latest=t.turns?.at(-1);let live=liveActivity.get(t.id);if(live?.running&&latest&&latest.status!=='inProgress'&&(live.turnId===latest.id||(live.baseTurnId&&live.baseTurnId!==latest.id))){liveActivity.delete(t.id);live=undefined}const finished=live?.running===false&&(!live.turnId||live.turnId===latest?.id);const running=!finished&&(latest?.status==='inProgress'||t.status?.type==='active'||live?.running===true);const waiting=[...pendingApprovals.values()].some(e=>e.request.params?.threadId===t.id)||(t.status?.activeFlags||[]).some(f=>/waiting/i.test(f));const active=running||waiting;const node=$('activity');node.hidden=!active;node.dataset.waiting=String(waiting);const label=waiting?'等待你的确认…':live?.running&&live.label?live.label:'正在思考中…';if(node.textContent!==label)node.textContent=label;return active}
-function recordActivity(value){const p=value.params||{},id=p.threadId||p.turn?.threadId;if(!id)return;const method=value.method;let state=liveActivity.get(id)||{};if(method==='turn/started')state={running:true,turnId:p.turn?.id||p.turnId,label:'正在思考中…'};else if(method==='turn/completed')state={running:false,turnId:p.turn?.id||p.turnId,turnStatus:p.turn?.status};else if(method==='thread/status/changed'){if(p.status?.type==='active')state={...state,running:true,status:p.status};else if(p.status?.type==='idle')state={...(state.running===false?state:{}),running:false,status:p.status}}else if(method==='item/started'){const type=p.item?.type;state={...state,running:true,label:type==='commandExecution'?'正在执行命令…':type==='fileChange'?'正在修改文件…':type==='mcpToolCall'?'正在调用工具…':type==='agentMessage'?'正在回复…':'正在思考中…'}}else if(method==='item/agentMessage/delta')state={...state,running:true,label:'正在回复…'};else if(method==='item/completed')state={...state,label:'正在思考中…'};liveActivity.set(id,state);if(typeof desktopThreadStates!=='undefined')desktopThreadStates.set(id,state.status||{type:state.running?'active':'idle'});if(typeof refreshThreadIndicators==='function')refreshThreadIndicators();if(method==='turn/completed'&&typeof syncThreadState==='function')syncThreadState().catch(()=>{});if(selected?.id===id){updateActivity();if(typeof updateTaskControls==='function')updateTaskControls()}}
+function recordActivity(value){
+ const p=value.params||{},id=p.threadId||p.turn?.threadId;if(!id)return;
+ const method=value.method;let state=liveActivity.get(id)||{},listStatus;
+ if(method==='turn/started'){
+  listStatus={type:'active',activeFlags:[]};state={running:true,turnId:p.turn?.id||p.turnId,label:'正在思考中…',status:listStatus};
+ }else if(method==='turn/completed'){
+  state={running:false,turnId:p.turn?.id||p.turnId,turnStatus:p.turn?.status};
+  if(typeof desktopThreadStates!=='undefined'&&desktopThreadStates.get(id)?.type==='active')listStatus={type:'idle'};
+ }else if(method==='thread/status/changed'&&p.status?.type){
+  state={...state,running:p.status.type==='active',status:p.status};listStatus=p.status;
+ }else if(method==='item/started'){
+  const type=p.item?.type;state={...state,running:true,label:type==='commandExecution'?'正在执行命令…':type==='fileChange'?'正在修改文件…':type==='mcpToolCall'?'正在调用工具…':type==='agentMessage'?'正在回复…':'正在思考中…'};
+ }else if(method==='item/agentMessage/delta')state={...state,running:true,label:'正在回复…'};
+ else if(method==='item/completed')state={...state,label:'正在思考中…'};
+ else return;
+ liveActivity.set(id,state);
+ if(listStatus&&typeof desktopThreadStates!=='undefined')desktopThreadStates.set(id,listStatus);
+ if(typeof refreshThreadIndicators==='function')refreshThreadIndicators();
+ if(method==='turn/completed'&&typeof syncThreadState==='function')syncThreadState().catch(()=>{});
+ if(selected?.id===id){updateActivity();if(typeof updateTaskControls==='function')updateTaskControls()}
+}
 const answerDateFormat=new Intl.DateTimeFormat('zh-CN',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'});
 const answerIcons={
  copy:'<rect x="8" y="8" width="13" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/>',
@@ -513,7 +542,12 @@ async function send(e){e.preventDefault();if($('send').type==='button')return;cl
 async function approvalApi(body){const r=await fetch('/mobile-api/approvals',{method:body?'POST':'GET',headers:{...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined,cache:'no-store'});const value=await readJsonResponse(r);if(!r.ok)throw Error(value.error||'审批连接失败（HTTP '+r.status+'）');return value}
 let approvalReading=false;
 async function syncApprovals(){if(approvalReading||!privateAccess)return;approvalReading=true;try{const r=await approvalApi();$('approvalConnection').textContent=r.desktopConnected?'电脑会话审批已连接':'电脑会话审批未连接';const ids=new Set(r.requests.map(x=>String(x.id)));for(const [id,entry] of pendingApprovals)if(!ids.has(id)){entry.card.remove();pendingApprovals.delete(id)}r.requests.forEach(approval);updateApprovals()}finally{approvalReading=false}}
-function updateApprovals(){updateActivity();if(typeof refreshThreadIndicators==='function')refreshThreadIndicators();const count=pendingApprovals.size;$('approvalCount').textContent='待审批 '+count;$('approvalTitle').textContent=count?[...pendingApprovals.values()][0].card._title:'需要你的确认';for(const entry of pendingApprovals.values())entry.card.querySelector('.approval-title').hidden=count===1;if(!count)$('approvalDialog').close()}
+function requestAttentionKind(request){
+ if(request.method?.endsWith('/requestApproval'))return 'waiting';
+ if(['item/tool/requestUserInput','mcpServer/elicitation/request'].includes(request.method))return 'input';
+ return 'attention';
+}
+function updateApprovals(){updateActivity();if(typeof refreshThreadIndicators==='function')refreshThreadIndicators();const count=pendingApprovals.size,entries=[...pendingApprovals.values()],kinds=new Set(entries.map(e=>requestAttentionKind(e.request)));const label=kinds.has('input')&&kinds.size===1?'待回答':kinds.size>1||kinds.has('attention')?'待确认':'待审批';$('approvalCount').textContent=label+' '+count;$('approvalTitle').textContent=count?entries[0].card._title:'需要你的确认';for(const entry of entries)entry.card.querySelector('.approval-title').hidden=count===1;if(!count)$('approvalDialog').close()}
 function approvalField(card,label,value,code=false){if(value===undefined||value===null||value==='')return;const field=document.createElement('div');field.className='approval-field';field.dataset.field=label;const name=document.createElement('span');name.textContent=label;const body=document.createElement(code?'pre':'div');body.className='approval-value';body.textContent=Array.isArray(value)?value.join('\n'):String(value);field.append(name,body);card.append(field)}
 function permissionFields(card,permissions,prefix=''){const names={network:'网络访问',fileSystem:'文件访问',filesystem:'文件访问',read:'读取',write:'写入',readPaths:'可读取的路径',writePaths:'可写入的路径',allowedDomains:'允许访问的域名',domains:'访问域名',enabled:'启用',access:'访问范围',fullAccess:'完整访问',restricted:'受限访问'};for(const [key,value] of Object.entries(permissions||{})){const label=(prefix?prefix+' · ':'')+(names[key]||key);if(value&&typeof value==='object'&&!Array.isArray(value))permissionFields(card,value,label);else approvalField(card,label,typeof value==='boolean'?(value?'允许':'不允许'):value)}}
 function approval(request){const key=String(request.id);if(pendingApprovals.has(key))return;const p=request.params||{},method=request.method,card=document.createElement('div');card.className='approval';pendingApprovals.set(key,{request,card});const titles={'item/commandExecution/requestApproval':'允许执行命令？','item/fileChange/requestApproval':'允许修改这些文件？','item/permissions/requestApproval':'允许申请的权限？','item/tool/requestUserInput':'需要你的选择','mcpServer/elicitation/request':'需要你补充信息'};const h=document.createElement('strong');h.className='approval-title';h.textContent=p.title||titles[method]||'需要你的确认';card._title=h.textContent;h.hidden=true;const source=document.createElement('span');source.className='approval-source';const thread=threadRows.find(t=>t.id===p.threadId);source.textContent=(key.startsWith('desktop:')?'电脑会话':'手机会话')+(thread?' · '+(thread.name||thread.preview?.slice(0,60)||'未命名聊天'):'');card.append(h,source);
@@ -564,6 +598,7 @@ $('checkConnection').onclick=resumeConnection;
   <button type="submit" class="primary" id="goalCreate">设定目标</button>
  </form>
  <div id="goalActions" hidden>
+  <button type="button" id="goalEdit">编辑目标</button>
   <button type="button" id="goalStatus"></button>
   <button type="button" id="goalClear">清除目标</button>
  </div>

@@ -143,3 +143,30 @@ test('desktop bridge verifies initialization, relays approvals, and does not rep
   await delay(20);
   assert.equal(sockets.length, 3);
 });
+
+test('native goal edits reject stale objectives and statuses without writing', async () => {
+  const bridge = new DesktopBridge(() => {}, () => {});
+  const current = { objective: 'Original objective', status: 'active' };
+  const writes = [];
+  const manager = {
+    sendRequest: async method => {
+      assert.equal(method, 'thread/goal/get');
+      return { goal: current };
+    },
+    setThreadGoal: async (id, options) => {
+      writes.push([id, { ...options }]);
+      return { objective: options.objective };
+    },
+  };
+  bridge.syncPending = async () => {};
+  bridge.call = async (method, { expression }) => {
+    assert.equal(method, 'Runtime.evaluate');
+    return { result: { value: await runInNewContext(expression, { window: { __mobileCompanionManager: manager } }) } };
+  };
+  const edit = { objective: 'Edited objective', previousObjective: current.objective, previousStatus: current.status };
+  await assert.rejects(bridge.goalMutation('fixture', 'edit', { ...edit, previousObjective: 'Stale' }), { code: 'GOAL_CONFLICT' });
+  await assert.rejects(bridge.goalMutation('fixture', 'edit', { ...edit, previousStatus: 'paused' }), { code: 'GOAL_CONFLICT' });
+  assert.deepEqual(writes, []);
+  assert.equal((await bridge.goalMutation('fixture', 'edit', edit)).goal.objective, edit.objective);
+  assert.deepEqual(writes, [['fixture', { objective: edit.objective, appendTranscriptItem: false }]]);
+});

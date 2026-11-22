@@ -16,6 +16,12 @@ Open **连接诊断** on the mobile home screen to inspect, download or clear lo
 
 After one successful online visit in the same browser profile, the offline screen can capture browser-observed navigation failures and export them without contacting the gateway. It cannot inspect Tailscale or Android system logs, or diagnose failures before the offline screen is installed. A browser navigation error alone does not distinguish DNS from routing failures.
 
+## Goals and conversation status
+
+An existing desktop goal gets shortcuts to edit its text, pause or resume it when available, and clear it with confirmation. Editing checks that the objective and status still match the version shown; on a conflict, reopen the goal and check the desktop state before editing again. Conversation badges distinguish running, unread, error, awaiting an answer, and awaiting approval. In a conversation, mixed pending requests show separate counts.
+
+To show a clock for conversations with linked heartbeat automations, set `automationDirectory` in your private configuration to the absolute path of your local Codex automations directory, not the parent Codex home directory. Leave it out to disable all automation reads. Use only a directory that you control. The gateway returns active and paused counts for listed conversations, not automation names, prompts, or schedules. Unsupported file formats produce no badge. The companion does not change automations.
+
 ## Start on Windows
 
 Install Node.js 24 or later, the official Codex desktop app for your Windows account, and Tailscale on the PC and phone. The launcher currently recognizes the `OpenAI.Codex` Windows app package, not a browser shortcut or another desktop distribution. Chrome is not required; use a current browser on the phone.
@@ -49,7 +55,7 @@ The GitHub Actions workflow runs the same checks on Windows and Linux. Passing m
 
 On Windows, run `powershell.exe -NoProfile -File .\test\windows-launcher.ps1` to check launch and refusal paths without launching Codex.
 
-The optional browser fixture uses Playwright and Chromium. With Playwright available on Node's module path and its browser installed, run `node test/browser-mobile.cjs`. Set `PLAYWRIGHT_CHANNEL=msedge` to use an installed Microsoft Edge. The fixture verifies the mobile page at 320, 390, and 1280 px against synthetic responses; it does not connect to Codex.
+The optional browser fixtures use Playwright and Chromium. With Playwright available on Node's module path and its browser installed, run `node test/browser-mobile.cjs` and `node test/browser-diagnostics.cjs`. Set `PLAYWRIGHT_CHANNEL=msedge` to use an installed Microsoft Edge. These fixtures use synthetic sessions and connection failures and do not connect to Codex.
 
 ## Security boundary
 

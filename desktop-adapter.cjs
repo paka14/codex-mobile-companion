@@ -3,6 +3,7 @@
 const { createHash, randomUUID } = require('node:crypto');
 const { win32 } = require('node:path');
 const DesktopBridge = require('./desktop-bridge.cjs');
+const { readThreadAutomations } = require('./mobile-automations.cjs');
 
 const nativeMethods = new Set([
   'thread/list', 'thread/read', 'thread/turns/list', 'thread/goal/get',
@@ -11,10 +12,13 @@ const nativeMethods = new Set([
 const invalid = message => Object.assign(Error(message), { code: 'INVALID_ACTION' });
 const unavailable = () => Object.assign(Error('请在电脑上启动支持手机连接的 Codex 后重试。'), { code: 'DESKTOP_UNAVAILABLE', definitive: true });
 const stale = () => Object.assign(Error('此审批已处理或连接已变更。请刷新后核对。'), { code: 'APPROVAL_STALE' });
+const goalStates = new Set(['active', 'paused', 'complete', 'blocked', 'stalled', 'budgetLimited', 'usageLimited']);
+const validGoalText = value => typeof value === 'string' && Boolean(value.trim()) && [...value].length <= 4000;
 
-function createDesktopAdapter({ Bridge = DesktopBridge, port } = {}) {
+function createDesktopAdapter({ Bridge = DesktopBridge, port, automationDirectory } = {}) {
   const subscribers = new Set(), approvals = new Map(), resolved = new Set(), responding = new Set();
   const unreadIds = new Set();
+  const goalWrites = new Set();
   let session = 0, revision = 0, healthResult, healthCheck;
   const emit = value => { for (const fn of subscribers) fn(value); };
   const changed = () => emit({ type: 'mcp-notification', method: 'phone/approvalsChanged' });
@@ -96,6 +100,13 @@ function createDesktopAdapter({ Bridge = DesktopBridge, port } = {}) {
     return result.data;
   }
 
+  async function mutateGoal(threadId, action, value) {
+    if (goalWrites.has(threadId)) throw Object.assign(Error('目标正在更新，请稍后核对。'), { code: 'GOAL_CONFLICT' });
+    goalWrites.add(threadId);
+    try { return await bridge.goalMutation(threadId, action, value); }
+    finally { goalWrites.delete(threadId); }
+  }
+
   return {
     start: () => bridge.start(),
     stop: () => bridge.stop(),
@@ -107,13 +118,18 @@ function createDesktopAdapter({ Bridge = DesktopBridge, port } = {}) {
       if (method === 'thread/fork' || method === 'thread/resume') return bridge.lifecycle(method, params);
       if (method === 'thread/settings/read') return bridge.settings(threadId);
       if (method === 'thread/settings/update') return bridge.settings(threadId, params);
-      if (method === 'thread/goal/clear') return bridge.goalMutation(threadId, 'clear');
+      if (method === 'thread/goal/clear') return mutateGoal(threadId, 'clear');
       if (method === 'thread/goal/set') {
-        const { objective, status } = params;
-        if (typeof objective === 'string' && objective.trim() && [...objective.trim()].length <= 4000 && status === undefined) {
-          return bridge.goalMutation(threadId, 'create', objective.trim());
+        const { objective, status, previousObjective, previousStatus } = params;
+        if (validGoalText(objective) && status === undefined) {
+          if (previousObjective === undefined && previousStatus === undefined) return mutateGoal(threadId, 'create', objective.trim());
+          if (validGoalText(previousObjective) && goalStates.has(previousStatus)) {
+            return mutateGoal(threadId, 'edit', { objective: objective.trim(), previousObjective, previousStatus });
+          }
         }
-        if (objective === undefined && ['paused', 'active'].includes(status)) return bridge.goalMutation(threadId, 'status', status);
+        if (objective === undefined && previousObjective === undefined && previousStatus === undefined && ['paused', 'active'].includes(status)) {
+          return mutateGoal(threadId, 'status', status);
+        }
         throw invalid('目标内容或状态无效。');
       }
       if (!nativeMethods.has(method)) throw invalid('不支持此桌面操作。');
@@ -132,7 +148,9 @@ function createDesktopAdapter({ Bridge = DesktopBridge, port } = {}) {
     },
     async threadState() {
       const threads = await recent();
-      return { threads, unreadIds: threads.filter(thread => unreadIds.has(thread.id)).map(thread => thread.id) };
+      const ids = threads.map(thread => thread.id);
+      return { threads, unreadIds: ids.filter(id => unreadIds.has(id)),
+        ...(automationDirectory && { threadAutomations: await readThreadAutomations(automationDirectory, ids) }) };
     },
     async setUnread(id, unread) {
       if (unread) {

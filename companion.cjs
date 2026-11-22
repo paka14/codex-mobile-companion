@@ -1,13 +1,13 @@
 'use strict';
 
 const { readFile } = require('node:fs/promises');
-const { dirname, resolve } = require('node:path');
+const { dirname, isAbsolute, resolve } = require('node:path');
 const { createGateway } = require('./gateway.cjs');
 const { createDesktopAdapter } = require('./desktop-adapter.cjs');
 
 async function loadConfig(file) {
   const config = JSON.parse((await readFile(file, 'utf8')).replace(/^\uFEFF/, ''));
-  const { origin, ownerLogin, dataDirectory = 'data', port = 4317, desktopPort = 9229 } = config ?? {};
+  const { origin, ownerLogin, dataDirectory = 'data', port = 4317, desktopPort = 9229, automationDirectory } = config ?? {};
   const boundPort = value => Number.isInteger(value) && value >= 1024 && value <= 65535;
   const url = URL.canParse(origin) ? new URL(origin) : null;
   if (!url || url.protocol !== 'https:' || url.origin !== origin || url.port ||
@@ -16,13 +16,19 @@ async function loadConfig(file) {
       !boundPort(port) || !boundPort(desktopPort) || port === desktopPort) {
     throw Error('Invalid HTTPS origin, owner login, data directory or ports.');
   }
-  return { origin, ownerLogin, dataDirectory: resolve(dirname(file), dataDirectory), port, desktopPort };
+  if (automationDirectory !== undefined && (typeof automationDirectory !== 'string' || automationDirectory.includes('\0') ||
+      !isAbsolute(automationDirectory) || (process.platform === 'win32' && !/^[a-z]:[\\/]/i.test(automationDirectory)))) {
+    throw Error('The automation directory must be an absolute local path.');
+  }
+  return { origin, ownerLogin, dataDirectory: resolve(dirname(file), dataDirectory), port, desktopPort,
+    ...(automationDirectory !== undefined && { automationDirectory }) };
 }
 
 async function startCompanion(config, { makeDesktop = createDesktopAdapter } = {}) {
-  const desktop = makeDesktop({ port: config.desktopPort });
+  const { automationDirectory, ...gatewayConfig } = config;
+  const desktop = makeDesktop({ port: config.desktopPort, automationDirectory });
   const gateway = createGateway({
-    ...config, desktop,
+    ...gatewayConfig, desktop,
     reportError() { console.error('A companion request failed. Check the Codex desktop connection.'); },
   });
   const address = await gateway.start(config.port);

@@ -157,8 +157,12 @@ DesktopBridge.prototype.goalMutation=async function(threadId,action,value){
   const manager=window.__mobileCompanionManager;
   try{
    if(!manager)throw Error('桌面会话管理器尚未就绪');
-   if(action==='create'&&typeof manager.setThreadGoal==='function'){
+   if((action==='create'||action==='edit')&&typeof manager.setThreadGoal==='function'){
     const current=await manager.sendRequest('thread/goal/get',{threadId:id});
+    if(action==='edit'){
+     if(current?.goal?.objective!==value.previousObjective||current.goal.status!==value.previousStatus)return {conflict:true};
+     return {goal:await manager.setThreadGoal(id,{objective:value.objective,appendTranscriptItem:false})};
+    }
     if(current.goal)throw Error('当前会话已有目标，请重新打开目标面板');
     return {goal:await manager.setThreadGoal(id,{objective:value})};
    }
@@ -170,6 +174,7 @@ DesktopBridge.prototype.goalMutation=async function(threadId,action,value){
  const reply=await this.call('Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true});
  const result=reply.result?.value;
  if(!result||reply.exceptionDetails)throw Error('未取得桌面目标操作的结果，请重新打开目标面板核对状态');
+ if(result.conflict)throw Object.assign(Error('桌面目标已变化，请重新打开目标面板'),{code:'GOAL_CONFLICT'});
  if(result.error)throw Error(result.error);
  return result;
 };
