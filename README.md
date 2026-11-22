@@ -2,9 +2,11 @@
 
 An unofficial, self-hosted Windows companion for accessing your own Codex desktop sessions from a phone browser. The intended deployment uses a private Tailscale connection, with the gateway on your PC rather than on GitHub or a shared server.
 
+[中文安装和实机验收](README.zh-CN.md) · [Security and vulnerability reporting](SECURITY.md)
+
 ## Development status
 
-This is a **Windows developer preview**, not an installer. The repository includes a Windows launcher, mobile UI, loopback gateway and local Codex bridge. A clean Windows-to-phone run is still pending; no Codex desktop version is advertised as supported yet. Read and pin state are not synced to the desktop sidebar in this preview.
+This is a **Windows developer preview**, not an installer. The repository includes a Windows launcher, mobile UI, loopback gateway and local Codex bridge. A clean Windows-to-phone run is still pending; no Codex desktop version is advertised as supported yet. Pinning is not available. Read markers apply only to the companion and reset when the gateway restarts.
 
 The first runnable release is intended to cover session browsing, history, sending messages, and approvals. Notifications are not required for the first-run setup. Windows and Codex version support will be listed after a clean-machine test.
 

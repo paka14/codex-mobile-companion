@@ -12,7 +12,7 @@ const { MobileSnapshots } = require('./mobile-snapshot.cjs');
 const threadIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const desktopMethods = new Set([
   'phone/thread/snapshot', 'thread/list', 'thread/read', 'thread/turns/list', 'thread/resume',
-  'thread/fork', 'thread/pin', 'thread/archive', 'thread/name/set', 'model/list', 'thread/settings/read',
+  'thread/fork', 'thread/archive', 'thread/name/set', 'model/list', 'thread/settings/read',
   'thread/settings/update', 'thread/goal/get', 'thread/goal/set', 'thread/goal/clear', 'turn/interrupt',
 ]);
 const unrestrictedMethods = new Set(['thread/list', 'model/list']);

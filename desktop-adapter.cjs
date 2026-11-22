@@ -116,7 +116,6 @@ function createDesktopAdapter({ Bridge = DesktopBridge, port } = {}) {
         if (objective === undefined && ['paused', 'active'].includes(status)) return bridge.goalMutation(threadId, 'status', status);
         throw invalid('目标内容或状态无效。');
       }
-      if (method === 'thread/pin') throw invalid('此预览版暂未接入桌面置顶。');
       if (!nativeMethods.has(method)) throw invalid('不支持此桌面操作。');
       return bridge.request(method, params);
     },
@@ -133,7 +132,7 @@ function createDesktopAdapter({ Bridge = DesktopBridge, port } = {}) {
     },
     async threadState() {
       const threads = await recent();
-      return { threads, pinnedIds: [], unreadIds: threads.filter(thread => unreadIds.has(thread.id)).map(thread => thread.id) };
+      return { threads, unreadIds: threads.filter(thread => unreadIds.has(thread.id)).map(thread => thread.id) };
     },
     async setUnread(id, unread) {
       if (unread) {

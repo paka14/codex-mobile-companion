@@ -41,7 +41,7 @@ async function fixture(t) {
       await approvalBarrier;
       requests.shift();
     },
-    async threadState() { return { pinnedIds: [], unreadIds: [], threads: [thread] }; },
+    async threadState() { return { unreadIds: [], threads: [thread] }; },
     async workspaces() { return { projects: [], assignments: {} }; },
   };
   const gateway = createGateway({ origin, ownerLogin, dataDirectory, desktop });
@@ -98,6 +98,7 @@ test('requires owner identity and same-origin writes, even with a legacy link to
   assert.equal((await request('/mobile', { authenticated: false })).status, 403);
   assert.equal((await request('/mobile')).status, 200);
   assert.equal((await request(path, { data: { method: 'thread/start' } })).status, 400);
+  assert.equal((await request(path, { data: { method: 'thread/pin', params: { threadId, pinned: true } } })).status, 400);
   assert.equal((await request(path, { data: { method: 'thread/read' } })).status, 400);
   assert.equal((await request(path, { raw: '[]' })).status, 400);
   assert.equal((await request(path, { raw: 'x'.repeat(128_001) })).status, 413);

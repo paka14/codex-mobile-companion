@@ -6,7 +6,7 @@ function desktopRpc(method,params){if(remoteConnectionHealth&&!remoteChatReady()
 function rememberChat(id){const url=new URL(location.href);url.searchParams.set('thread',id);history.replaceState(null,'',url);sessionStorage.setItem('codex-mobile-chat',id);selectGoalBarThread(id)}
 function forgetChat(){const url=new URL(location.href);url.searchParams.delete('thread');history.replaceState(null,'',url);sessionStorage.removeItem('codex-mobile-chat');$('addMenu').hidden=true;closeSlashCommands();selectGoalBarThread(null)}
 function projectFor(t){const assigned=workspaceData.assignments[t.id]?.projectId;if(assigned)return assigned;const cwd=(t.cwd||'').toLowerCase().replaceAll('/','\\');let best=null,length=-1;for(const p of workspaceData.projects)for(const root of p.roots){const value=root.toLowerCase().replaceAll('/','\\').replace(/\\$/,'');if((cwd===value||cwd.startsWith(value+'\\'))&&value.length>length){best=p.id;length=value.length}}return best}
-function renderWorkspaces(){const container=$('workspaces');if(!container||deferThreadListRender())return;const opened=new Set([...container.querySelectorAll('details[open]')].map(x=>x.dataset.id));container.replaceChildren();for(const p of workspaceData.projects){const group=document.createElement('details');group.className='workspace';group.dataset.id=p.id;group.dataset.orderScope='workspace:'+p.id;group.open=opened.has(p.id);const summary=document.createElement('summary');summary.textContent=p.name;group.append(summary);const rows=orderedThreadRows('workspace:'+p.id,recentThreads(threadRows.filter(t=>!desktopThreadPins.has(t.id)&&projectFor(t)===p.id))).slice(0,5);for(const t of rows){group.append(makeThreadRow(t))}const path=document.createElement('div');path.className='workspace-path';path.textContent=p.roots[0]||'';group.append(path);if(p.roots[0]){const add=button('＋ 新建会话',()=>{$('cwd').value=p.roots[0];return create()});add.className='workspace-new';group.append(add)}container.append(group)}if(!workspaceData.projects.length)container.textContent='暂时没有工作区';refreshOperationControls()}
+function renderWorkspaces(){const container=$('workspaces');if(!container||deferThreadListRender())return;const opened=new Set([...container.querySelectorAll('details[open]')].map(x=>x.dataset.id));container.replaceChildren();for(const p of workspaceData.projects){const group=document.createElement('details');group.className='workspace';group.dataset.id=p.id;group.dataset.orderScope='workspace:'+p.id;group.open=opened.has(p.id);const summary=document.createElement('summary');summary.textContent=p.name;group.append(summary);const rows=orderedThreadRows('workspace:'+p.id,recentThreads(threadRows.filter(t=>projectFor(t)===p.id))).slice(0,5);for(const t of rows){group.append(makeThreadRow(t))}const path=document.createElement('div');path.className='workspace-path';path.textContent=p.roots[0]||'';group.append(path);if(p.roots[0]){const add=button('＋ 新建会话',()=>{$('cwd').value=p.roots[0];return create()});add.className='workspace-new';group.append(add)}container.append(group)}if(!workspaceData.projects.length)container.textContent='暂时没有工作区';refreshOperationControls()}
 async function loadWorkspaces(){workspaceData=await mobileApi('workspaces');renderWorkspaces()}
 function permissionMode(settings){const policy=settings?.sandboxPolicy||settings?.sandbox;if(policy?.type==='dangerFullAccess'&&settings?.approvalPolicy==='never')return 'full-access';if(policy?.type==='readOnly')return 'read-only';if(policy?.type==='workspaceWrite')return 'default';return null}
 const permissionNames={'default':'默认权限','read-only':'只读','full-access':'完全访问'};
@@ -230,8 +230,7 @@ function mobileSlashActions(){
    return create();
   }],
   ['fork','复制上下文到新聊天',()=>$('resumeCopy').click()],
-  ['rename','重命名当前聊天',()=>openThreadRename(thread)],
-  ['pin',desktopThreadPins.has(thread.id)?'取消置顶当前聊天':'置顶当前聊天',()=>toggleThreadPin(thread)]
+  ['rename','重命名当前聊天',()=>openThreadRename(thread)]
  ];
 }
 
@@ -299,24 +298,9 @@ document.addEventListener('pointerdown',e=>{
 });
 
 // Share desktop unread state and activity across recent and workspace lists.
-const desktopThreadPins=new Set();
-const desktopThreadRows=new Map(),pinChanges=new Set();
-let pinRevision=0;
+const desktopThreadRows=new Map();
 let desktopThreadStates=new Map(),unreadThreadIds=new Set(),threadStateReading=false,renameThreadId=null;
 function listedThread(id){const recent=threadRows.find(t=>t.id===id),desktop=desktopThreadRows.get(id);return recent||desktop}
-function renderPinnedThreads(){
- const container=$('pinnedThreads');container.replaceChildren();
- const rows=orderedThreadRows(container.id,[...desktopThreadPins].map(listedThread).filter(Boolean));
- for(const t of rows)container.append(makeThreadRow(t));
- if(!container.childElementCount){const hint=document.createElement('div');hint.className='thread-list-empty';hint.textContent='暂无置顶会话，可点会话右侧 ⋯ → 置顶。';container.append(hint)}
-}
-async function toggleThreadPin(t){
- if(pinChanges.has(t.id))return;
- const pinned=desktopThreadPins.has(t.id);pinChanges.add(t.id);pinRevision++;
- document.querySelectorAll('.thread-row').forEach(row=>{if(row.dataset.threadId===t.id)row.querySelector('[data-action=pin]').disabled=true});
- try{await desktopRpc('thread/pin',{threadId:t.id,pinned:!pinned});if(pinned){desktopThreadPins.delete(t.id);if(!threadRows.some(row=>row.id===t.id))threadRows.push(t)}else desktopThreadPins.add(t.id)}
- finally{pinChanges.delete(t.id);pinRevision++;renderList()}
-}
 async function listThreads(params){return desktopRpc('thread/list',params)}
 function threadRowStatus(t){
  const cached=threadCache.get(t.id),live=liveActivity.get(t.id),status=desktopThreadStates.get(t.id)||live?.status||t.status||cached?.status;
@@ -480,27 +464,22 @@ function makeThreadRow(t){
  const more=button('⋯',()=>{const show=menu.hidden;closeThreadMenus();menu.hidden=!show;more.setAttribute('aria-expanded',String(show))});more.className='thread-more';more.setAttribute('aria-label','更多选项：'+title.textContent);more.setAttribute('aria-haspopup','menu');more.setAttribute('aria-expanded','false');
  const menu=document.createElement('div');menu.className='thread-menu';menu.hidden=true;menu.setAttribute('role','menu');
  const action=(label,fn)=>{const b=button(label,async()=>{closeThreadMenus();b.disabled=true;try{await fn()}finally{b.disabled=false}});b.setAttribute('role','menuitem');menu.append(b);return b};
- const pin=action(desktopThreadPins.has(t.id)?'取消置顶':'置顶',()=>toggleThreadPin(t));pin.dataset.action='pin';pin.disabled=pinChanges.has(t.id);
  action('重命名',()=>openThreadRename(t));
  action('标记为已读',()=>setThreadUnread(t.id,false));
  action('标记为未读',()=>setThreadUnread(t.id,true));
  action('复制会话链接',()=>{const url=new URL(location.href);url.searchParams.delete('token');url.searchParams.set('thread',t.id);return navigator.clipboard.writeText(url.href)});
  if(t.cwd)action('复制工作目录',()=>navigator.clipboard.writeText(t.cwd));
- action('归档',async()=>{await desktopRpc('thread/archive',{threadId:t.id});threadRows=threadRows.filter(x=>x.id!==t.id);desktopThreadPins.delete(t.id);desktopThreadRows.delete(t.id);pinRevision++;threadCache.delete(t.id);liveActivity.delete(t.id);unreadThreadIds.delete(t.id);renderList();refreshThreadIndicators()});
+ action('归档',async()=>{await desktopRpc('thread/archive',{threadId:t.id});threadRows=threadRows.filter(x=>x.id!==t.id);desktopThreadRows.delete(t.id);threadCache.delete(t.id);liveActivity.delete(t.id);unreadThreadIds.delete(t.id);renderList();refreshThreadIndicators()});
  row.append(open,more,menu);
  queueMicrotask(refreshThreadIndicators);return row;
 }
-function applyDesktopState(state,revision=pinRevision){
- const pinTitles=()=>JSON.stringify([...desktopThreadPins].map(id=>[id,threadDisplayTitle(listedThread(id),'')]));
- const before=pinTitles();
+function applyDesktopState(state){
  if(state.threads){desktopThreadRows.clear();for(const t of state.threads){const seconds=value=>Number(value)>1e11?Number(value)/1000:Number(value)||0;desktopThreadRows.set(t.id,{...t,name:t.title||t.name,updatedAt:seconds(t.updatedAt),recencyAt:seconds(t.recencyAt??t.updatedAt),status:{type:t.status}})}desktopThreadStates=new Map(state.threads.map(t=>[t.id,{type:t.status}]))}
- if(state.pinnedIds&&revision===pinRevision&&!pinChanges.size){desktopThreadPins.clear();state.pinnedIds.forEach(id=>desktopThreadPins.add(id))}
  unreadThreadIds=new Set(state.unreadIds||[]);
  threadAutomations=state.threadAutomations||{};
- if(before!==pinTitles())renderList();
 }
-async function syncThreadState(){if(threadStateReading||document.hidden)return;threadStateReading=true;const revision=pinRevision;try{const state=await mobileApi('thread-state');applyDesktopState(state,revision);refreshThreadIndicators()}finally{threadStateReading=false}}
-async function setThreadUnread(threadId,unread){const revision=pinRevision;const state=await mobileApi('thread-state',{threadId,unread});applyDesktopState(state,revision);refreshThreadIndicators()}
+async function syncThreadState(){if(threadStateReading||document.hidden)return;threadStateReading=true;try{applyDesktopState(await mobileApi('thread-state'));refreshThreadIndicators()}finally{threadStateReading=false}}
+async function setThreadUnread(threadId,unread){applyDesktopState(await mobileApi('thread-state',{threadId,unread}));refreshThreadIndicators()}
 async function markThreadRead(id){if(unreadThreadIds.has(id))await setThreadUnread(id,false)}
 document.addEventListener('click',e=>{if(!e.target.closest('.thread-more,.thread-menu'))closeThreadMenus()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeThreadMenus()});

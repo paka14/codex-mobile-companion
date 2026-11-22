@@ -19,6 +19,7 @@ const thread = {
 
 async function run() {
   const channel = process.env.PLAYWRIGHT_CHANNEL;
+  const screenshots = process.env.MOBILE_FIXTURE_SCREENSHOTS;
   const browser = await chromium.launch(channel ? { channel } : {});
   try {
     for (const width of [320, 390, 1280]) {
@@ -35,7 +36,7 @@ async function run() {
           case '/mobile-api/events': return route.fulfill({ contentType: 'text/event-stream', body: ': connected\n\n' });
           case '/mobile-api/health': return route.fulfill({ json: { schemaVersion: 1, ready: true, code: 'READY' } });
           case '/mobile-api/workspaces': return route.fulfill({ json: { projects: [], assignments: {} } });
-          case '/mobile-api/thread-state': return route.fulfill({ json: { pinnedIds: [], unreadIds: [], threads: [] } });
+          case '/mobile-api/thread-state': return route.fulfill({ json: { unreadIds: [], threads: [] } });
           case '/mobile-api/approvals': return route.fulfill({ json: { desktopConnected: true, requests: [] } });
           case '/mobile-api/desktop-rpc': {
             const { method } = request.postDataJSON();
@@ -53,8 +54,18 @@ async function run() {
       });
       await page.goto('https://companion.example.test/mobile');
       assert.equal(await page.locator('#cwd').inputValue(), '');
+      assert.equal(await page.locator('#pinnedSection').count(), 0);
+      if (screenshots) await page.screenshot({ path: join(screenshots, 'companion-home-' + width + '.png') });
+      await page.locator('.thread-more').click();
+      assert.equal(await page.getByRole('menuitem', { name: '置顶', exact: true }).count(), 0);
+      await page.getByRole('menuitem', { name: '重命名', exact: true }).waitFor();
+      await page.keyboard.press('Escape');
       await page.getByText(thread.name, { exact: true }).click();
       await page.getByText('Example history', { exact: true }).waitFor();
+      await page.locator('#prompt').fill('/');
+      await page.getByText('/rename', { exact: true }).waitFor();
+      assert.equal(await page.getByText('/pin', { exact: true }).count(), 0);
+      if (screenshots) await page.screenshot({ path: join(screenshots, 'companion-commands-' + width + '.png') });
       await page.locator('#prompt').fill('Example message');
       await page.locator('#send').click();
       await page.waitForFunction(() => document.querySelector('#prompt').value === '');
