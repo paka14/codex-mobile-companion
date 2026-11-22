@@ -273,7 +273,7 @@ function refreshConnectionHealth(restart=false){
    // Bound both fetch and body parsing even if a suspended request ignores abort.
    const request=(async()=>{
     const response=await fetch('/mobile-api/health',{cache:'no-store',signal:check.controller.signal});
-    if(response.status===401)return {ready:false,code:'AUTH_REQUIRED',message:'连接身份未通过，请确认手机 Tailscale 已连接到你的账号，再刷新本页。无需回电脑扫码。'};
+    if(response.status===401||response.status===403)return {ready:false,code:'AUTH_REQUIRED',message:'连接身份未通过，请确认手机 Tailscale 已连接到你的账号，再刷新本页。'};
     if(!response.ok)throw Error('health unavailable');
     const health=await response.json();if(health.schemaVersion!==1)throw Error('health contract unavailable');
     return health;

@@ -4,6 +4,6 @@
   "private": true,
   "engines": { "node": ">=24" },
   "scripts": {
-    "test": "node --test test-mobile-access.cjs test-mobile-operations.cjs test-mobile-page.cjs test-mobile-snapshot.cjs"
+    "test": "node --test test-gateway.cjs test-mobile-access.cjs test-mobile-operations.cjs test-mobile-page.cjs test-mobile-snapshot.cjs"
   }
 }
