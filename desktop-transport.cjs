@@ -1,7 +1,7 @@
 'use strict';
 
-function desktopEndpoint(pages, port) {
-  if (!Array.isArray(pages)) return null;
+function desktopEndpoint(pages, port, host = '127.0.0.1') {
+  if (!Array.isArray(pages) || !['127.0.0.1', '[::1]'].includes(host)) return null;
   const endpoints = new Set();
   for (const page of pages) {
     if (page?.type !== 'page' || typeof page.url !== 'string' ||
@@ -11,10 +11,10 @@ function desktopEndpoint(pages, port) {
       const endpoint = new URL(page.webSocketDebuggerUrl);
       if (renderer.protocol !== 'app:' || renderer.host !== '-' || renderer.pathname !== '/index.html' ||
           renderer.username || renderer.password) continue;
-      if (endpoint.protocol !== 'ws:' || !['127.0.0.1', 'localhost'].includes(endpoint.hostname) ||
+      if (endpoint.protocol !== 'ws:' || ![host, 'localhost'].includes(endpoint.hostname) ||
           Number(endpoint.port || 80) !== port || endpoint.username || endpoint.password ||
           endpoint.search || endpoint.hash || !/^\/devtools\/page\/[a-z0-9_-]+$/i.test(endpoint.pathname)) continue;
-      endpoints.add('ws://127.0.0.1:' + port + endpoint.pathname);
+      endpoints.add('ws://' + host + ':' + port + endpoint.pathname);
     } catch {}
   }
   return endpoints.size === 1 ? [...endpoints][0] : null;
@@ -53,11 +53,17 @@ class DesktopTransport {
 
   async connect(generation) {
     try {
-      const response = await this.fetcher('http://127.0.0.1:' + this.port + '/json/list', {
-        signal: AbortSignal.timeout(1500), redirect: 'error',
-      });
-      if (!response.ok) throw Error('Desktop discovery failed');
-      const endpoint = desktopEndpoint(await response.json(), this.port);
+      let endpoint;
+      for (const host of ['127.0.0.1', '[::1]']) {
+        if (generation !== this.generation) return;
+        try {
+          const response = await this.fetcher('http://' + host + ':' + this.port + '/json/list', {
+            signal: AbortSignal.timeout(1500), redirect: 'error',
+          });
+          if (response.ok) endpoint = desktopEndpoint(await response.json(), this.port, host);
+        } catch {}
+        if (endpoint) break;
+      }
       if (generation !== this.generation) return;
       if (!endpoint) throw Error('No unique local Codex renderer');
       const socket = this.socket = new this.Socket(endpoint);

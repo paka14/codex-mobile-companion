@@ -21,3 +21,7 @@ jobs:
           node-version: '24'
           package-manager-cache: false
       - run: npm test
+      - name: Check Windows launcher
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: .\test\windows-launcher.ps1

@@ -12,6 +12,10 @@ const page = { type: 'page', url: 'app://-/index.html?initialRoute=%2F', webSock
 
 test('desktop discovery accepts only a unique local Codex renderer on the requested port', () => {
   assert.equal(desktopEndpoint([page], 9229), endpoint.replace('localhost', '127.0.0.1'));
+  const ipv6 = endpoint.replace('localhost', '[::1]');
+  assert.equal(desktopEndpoint([{ ...page, webSocketDebuggerUrl: ipv6 }], 9229, '[::1]'), ipv6);
+  assert.equal(desktopEndpoint([{ ...page, webSocketDebuggerUrl: ipv6 }], 9229), null);
+  assert.equal(desktopEndpoint([{ ...page, webSocketDebuggerUrl: ipv6.replace('[::1]', '[::]') }], 9229, '[::1]'), null);
   assert.equal(desktopEndpoint([page, { ...page, webSocketDebuggerUrl: endpoint + '2' }], 9229), null);
   assert.equal(desktopEndpoint([{ ...page, url: 'https://example.invalid/index.html' }], 9229), null);
   assert.equal(desktopEndpoint([{ ...page, url: 'app://fs/index.html' }], 9229), null);
@@ -34,6 +38,28 @@ async function until(predicate) {
   }
   assert.fail('bridge did not reach expected state');
 }
+
+test('desktop bridge reaches an IPv6-only renderer without following redirects', async t => {
+  const visited = [], connected = [];
+  const ipv6 = endpoint.replace('localhost', '[::1]');
+  class Socket {
+    constructor(url) { connected.push(url); }
+    close() {}
+  }
+  const bridge = new DesktopBridge(() => {}, () => {}, {
+    Socket, fetcher: async (url, init) => {
+      assert.equal(init.redirect, 'error');
+      visited.push(url);
+      if (!url.includes('[::1]')) return { ok: false };
+      return { ok: true, json: async () => [{ ...page, webSocketDebuggerUrl: ipv6 }] };
+    },
+  });
+  t.after(() => bridge.stop());
+  bridge.start();
+  await until(() => connected.length);
+  assert.deepEqual(visited, ['http://127.0.0.1:9229/json/list', 'http://[::1]:9229/json/list']);
+  assert.deepEqual(connected, [ipv6]);
+});
 
 test('desktop bridge verifies initialization, relays approvals, and does not replay on reconnect', async t => {
   const sockets = [], requests = [], resolved = [], activity = [];

@@ -1,0 +1,7 @@
+{
+  "origin": "https://companion.example.test",
+  "ownerLogin": "owner@example.test",
+  "port": 4317,
+  "desktopPort": 9229,
+  "dataDirectory": "data"
+}
