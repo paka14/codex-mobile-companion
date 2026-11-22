@@ -6,6 +6,8 @@ An unofficial, self-hosted Windows companion for accessing your own Codex deskto
 
 ## Development status
 
+The public preview version is `0.1.0-preview.1`. The version in `package.json` and the matching Git tag identify the source snapshot, not a supported Codex desktop version or a Windows installer. See the [changelog](CHANGELOG.md) for the scope of each version.
+
 This is a **Windows developer preview**, not an installer. The repository includes a Windows launcher, mobile UI, loopback gateway and local Codex bridge. A clean Windows-to-phone run is still pending; no Codex desktop version is advertised as supported yet. Pinning is not available. Read markers apply only to the companion and reset when the gateway restarts.
 
 The first runnable release is intended to cover session browsing, history, sending messages, and approvals. Notifications are not required for the first-run setup. Windows and Codex version support will be listed after a clean-machine test.
