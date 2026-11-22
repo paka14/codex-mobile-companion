@@ -2,7 +2,7 @@
 
 const assert = require('node:assert/strict');
 const { randomUUID } = require('node:crypto');
-const { mkdir, mkdtemp, rm, writeFile } = require('node:fs/promises');
+const { mkdir, mkdtemp, realpath, rm, writeFile } = require('node:fs/promises');
 const http = require('node:http');
 const { tmpdir } = require('node:os');
 const { join } = require('node:path');
@@ -73,7 +73,7 @@ test('reads an explicit config and never uses its origin as a bind address', asy
 });
 
 test('public entry serves desktop-backed history, send receipts and approval lifecycle', async t => {
-  const directory = await mkdtemp(join(tmpdir(), 'companion-app-'));
+  const directory = await mkdtemp(join(await realpath(tmpdir()), 'companion-app-'));
   const fake = mockDesktop();
   const automationDirectory = join(directory, 'automations');
   await mkdir(join(automationDirectory, 'fixture'), { recursive: true });
