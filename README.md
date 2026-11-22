@@ -4,7 +4,7 @@ An unofficial, self-hosted Windows companion for accessing your own Codex deskto
 
 ## Development status
 
-This is a **source preview**, not an installer or a runnable remote-control service. It includes the mobile UI and a loopback gateway with an injected desktop adapter. The real desktop adapter and Windows launcher are not yet included. Cloning this repository will not start a gateway or connect to Codex.
+This is a **source preview**, not an installer or a runnable remote-control service. It includes the mobile UI, loopback gateway, and local Codex renderer bridge. The gateway's desktop adapter and Windows launcher are not yet connected to this bridge. Cloning this repository will not start a gateway or connect to Codex.
 
 The first runnable release is intended to cover session browsing, history, sending messages, and approvals. Notifications are not required for the first-run setup. Windows and Codex version support will be listed after a clean-machine test.
 
@@ -25,6 +25,8 @@ The optional browser fixture uses Playwright and Chromium. With Playwright avail
 The preview access module assumes a trusted, loopback-only proxy. It is not a standalone authentication server. Do not expose a gateway or an Electron debugging port to the public internet. Do not include credentials, private links, real sessions, or runtime logs in issue reports.
 
 No third-party application binaries, extracted application assets, or user runtime data are included. Distribution terms for the source must be settled before public release.
+
+The renderer bridge uses a private desktop interface, not a supported Codex API. It requires an explicitly enabled local debugger and refuses non-loopback or ambiguous desktop targets. It is not exposed by the gateway. Do not proxy the debugging port or use a browser profile with it enabled as a substitute for the desktop app.
 
 ## Desktop adapter contract
 
