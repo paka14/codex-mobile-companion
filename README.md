@@ -16,6 +16,8 @@ Use Node.js 24 or later. The checks require no dependencies, credentials, networ
 npm test
 ```
 
+The GitHub Actions workflow runs the same checks on Windows and Linux. Passing module checks does not establish that a Codex desktop version is supported.
+
 ## Security boundary
 
 The preview access module assumes a trusted, loopback-only proxy. It is not a standalone authentication server. Do not expose a gateway or an Electron debugging port to the public internet. Do not include credentials, private links, real sessions, or runtime logs in issue reports.
