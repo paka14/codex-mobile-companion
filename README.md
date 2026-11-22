@@ -49,7 +49,7 @@ The optional browser fixture uses Playwright and Chromium. With Playwright avail
 
 The preview access module assumes a trusted, loopback-only proxy. It is not a standalone authentication server. Do not expose a gateway or an Electron debugging port to the public internet. Do not include credentials, private links, real sessions, or runtime logs in issue reports.
 
-No third-party application binaries, extracted application assets, or user runtime data are included. Distribution terms for the source must be settled before public release.
+The companion source is licensed under the [MIT License](LICENSE). The separately installed Codex and Tailscale applications are not distributed or licensed by this project. No third-party application binaries, extracted application assets, or user runtime data are included.
 
 The renderer bridge uses a private desktop interface, not a supported Codex API. It requires an explicitly enabled local debugger and refuses non-loopback or ambiguous desktop targets. It is not exposed by the gateway. Local programs can access a local debugger; use this only on a machine you trust. Only proxy the gateway port in Serve. Never proxy the debugging port, use Tailscale Funnel, or substitute a Chrome debug profile for the desktop app.
 
